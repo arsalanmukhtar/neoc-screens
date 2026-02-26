@@ -1,0 +1,225 @@
+/* ═══════════════════════════════════════════════════════
+   NDMA Dashboard – CSS Custom Properties
+   Font: Inter (user-specified)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* ─── Global resets ───────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    font-family: var(--font-base);
+    background: var(--bg-root);
+    color: var(--text-primary);
+    transition: background 0.4s ease, color 0.4s ease;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* ─── DARK theme (default) ────────────────────────────── */
+[data-theme="dark"] {
+    /* Backgrounds */
+    --bg-root: #080c14;
+    --bg-surface: #0d1220;
+    --bg-elevated: #131928;
+    --bg-card: #161d2e;
+    --bg-input: #0f1622;
+    --bg-overlay: rgba(8, 12, 20, 0.85);
+
+    /* Text */
+    --text-primary: #e8edf7;
+    --text-secondary: #8994b0;
+    --text-muted: #4a5470;
+    --text-accent: #ffffff;
+
+    /* Borders */
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-mid: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.18);
+
+    /* Grid outer (L1, R1) – Violet/Indigo */
+    --c-outer-base: #6366f1;
+    --c-outer-glow: rgba(99, 102, 241, 0.35);
+    --c-outer-muted: rgba(99, 102, 241, 0.12);
+    --c-outer-text: #a5b4fc;
+    --c-outer-cell: rgba(99, 102, 241, 0.15);
+    --c-outer-hover: rgba(99, 102, 241, 0.30);
+
+    /* Grid inner (L2, R2) – Amber/Gold */
+    --c-inner-base: #f59e0b;
+    --c-inner-glow: rgba(245, 158, 11, 0.30);
+    --c-inner-muted: rgba(245, 158, 11, 0.10);
+    --c-inner-text: #fcd34d;
+    --c-inner-cell: rgba(245, 158, 11, 0.12);
+    --c-inner-hover: rgba(245, 158, 11, 0.25);
+
+    /* Grid middle (M) – Cyan/Teal */
+    --c-mid-base: #06b6d4;
+    --c-mid-glow: rgba(6, 182, 212, 0.30);
+    --c-mid-muted: rgba(6, 182, 212, 0.10);
+    --c-mid-text: #67e8f9;
+    --c-mid-cell: rgba(6, 182, 212, 0.12);
+    --c-mid-hover: rgba(6, 182, 212, 0.25);
+
+    /* Status */
+    --c-success: #10b981;
+    --c-danger: #ef4444;
+    --c-warn: #f59e0b;
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.7);
+
+    /* Scrollbar */
+    --scrollbar-track: #0d1220;
+    --scrollbar-thumb: #2a3450;
+}
+
+/* ─── LIGHT theme ─────────────────────────────────────── */
+[data-theme="light"] {
+    /* Backgrounds */
+    --bg-root: #f0f2f8;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f8f9fc;
+    --bg-card: #ffffff;
+    --bg-input: #f4f5f9;
+    --bg-overlay: rgba(240, 242, 248, 0.90);
+
+    /* Text */
+    --text-primary: #1a1f36;
+    --text-secondary: #5a6482;
+    --text-muted: #9aa0b8;
+    --text-accent: #0d1117;
+
+    /* Borders */
+    --border-subtle: rgba(0, 0, 0, 0.05);
+    --border-mid: rgba(0, 0, 0, 0.09);
+    --border-strong: rgba(0, 0, 0, 0.15);
+
+    /* Grid outer (L1, R1) */
+    --c-outer-base: #4f46e5;
+    --c-outer-glow: rgba(79, 70, 229, 0.20);
+    --c-outer-muted: rgba(79, 70, 229, 0.08);
+    --c-outer-text: #4f46e5;
+    --c-outer-cell: rgba(79, 70, 229, 0.07);
+    --c-outer-hover: rgba(79, 70, 229, 0.15);
+
+    /* Grid inner (L2, R2) */
+    --c-inner-base: #d97706;
+    --c-inner-glow: rgba(217, 119, 6, 0.18);
+    --c-inner-muted: rgba(217, 119, 6, 0.07);
+    --c-inner-text: #b45309;
+    --c-inner-cell: rgba(217, 119, 6, 0.07);
+    --c-inner-hover: rgba(217, 119, 6, 0.14);
+
+    /* Grid middle (M) */
+    --c-mid-base: #0891b2;
+    --c-mid-glow: rgba(8, 145, 178, 0.18);
+    --c-mid-muted: rgba(8, 145, 178, 0.07);
+    --c-mid-text: #0e7490;
+    --c-mid-cell: rgba(8, 145, 178, 0.07);
+    --c-mid-hover: rgba(8, 145, 178, 0.14);
+
+    /* Status */
+    --c-success: #059669;
+    --c-danger: #dc2626;
+    --c-warn: #d97706;
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.10);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.14);
+
+    /* Scrollbar */
+    --scrollbar-track: #e8eaf2;
+    --scrollbar-thumb: #c5c9dc;
+}
+
+/* ─── Typography scale ────────────────────────────────── */
+:root {
+    --font-base: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+    --fw-thin: 100;
+    --fw-light: 300;
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+    --fw-extrabold: 800;
+    --fw-black: 900;
+
+    --fs-xs: 0.6875rem;
+    /* 11px */
+    --fs-sm: 0.75rem;
+    /* 12px */
+    --fs-base: 0.875rem;
+    /* 14px */
+    --fs-md: 1rem;
+    /* 16px */
+    --fs-lg: 1.125rem;
+    /* 18px */
+    --fs-xl: 1.25rem;
+    /* 20px */
+    --fs-2xl: 1.5rem;
+    --fs-3xl: 2rem;
+
+    --lh-tight: 1.2;
+    --lh-snug: 1.4;
+    --lh-normal: 1.6;
+    --ls-tight: -0.02em;
+    --ls-wide: 0.04em;
+    --ls-wider: 0.08em;
+
+    /* Spacing */
+    --sp-1: 0.25rem;
+    --sp-2: 0.5rem;
+    --sp-3: 0.75rem;
+    --sp-4: 1rem;
+    --sp-5: 1.25rem;
+    --sp-6: 1.5rem;
+    --sp-8: 2rem;
+    --sp-10: 2.5rem;
+    --sp-12: 3rem;
+
+    /* Radii */
+    --r-sm: 4px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-2xl: 20px;
+    --r-full: 9999px;
+
+    /* Transitions */
+    --t-fast: 0.15s ease;
+    --t-base: 0.25s ease;
+    --t-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --t-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ─── Scrollbars ──────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--r-full);
+}

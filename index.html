@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NDMA Control Dashboard</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/main.css" />
+</head>
+
+<body>
+    <!-- Background grid texture -->
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <div class="dashboard-shell">
+
+        <!-- ═══ TOPBAR ══════════════════════════════════════════════════════════ -->
+        <header class="topbar">
+            <div class="topbar-brand">
+                <div class="brand-icon">N</div>
+                <div>
+                    <div class="brand-title">NDMA</div>
+                    <div class="brand-sub">Control Dashboard</div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="search-wrap">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Search by PC, user, IP, portal…"
+                    autocomplete="off" />
+            </div>
+
+            <!-- Actions -->
+            <div class="topbar-actions">
+                <button id="btn-theme" class="btn-icon" data-tooltip="Light mode" aria-label="Toggle theme">☀️</button>
+
+                <button id="btn-carousel" class="btn-icon" data-tooltip="Toggle carousel"
+                    aria-label="Toggle carousel view">⊞</button>
+
+                <div id="auth-badge" class="auth-badge" role="button" tabindex="0" data-tooltip="Sign in to edit cells">
+                    <div class="auth-dot"></div>
+                    <span id="auth-label">Sign In</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ═══ MAIN STAGE ═══════════════════════════════════════════════════════ -->
+        <main class="stage">
+
+            <!-- All subgrids overview row -->
+            <div id="overview-row" class="overview-row" role="region" aria-label="Grid overview"></div>
+
+            <!-- Carousel navigation (hidden until carousel opens) -->
+            <div id="carousel-controls" class="carousel-controls" style="display:none;">
+                <button id="carousel-prev" class="carousel-nav-btn" aria-label="Previous subgrid">
+                    <svg viewBox="0 0 14 14">
+                        <polyline points="9,2 4,7 9,12" />
+                    </svg>
+                </button>
+                <div id="carousel-dots" class="carousel-indicators" role="tablist"></div>
+                <button id="carousel-next" class="carousel-nav-btn" aria-label="Next subgrid">
+                    <svg viewBox="0 0 14 14">
+                        <polyline points="5,2 10,7 5,12" />
+                    </svg>
+                </button>
+                <span id="carousel-label" class="carousel-label"></span>
+            </div>
+
+            <!-- Carousel detail panel -->
+            <section id="carousel-panel" class="carousel-panel" role="region" aria-label="Cell details">
+                <div class="panel-header">
+                    <span id="panel-title" class="panel-title">Select a subgrid</span>
+                    <span id="panel-meta" class="panel-meta"></span>
+                </div>
+                <div class="panel-body">
+                    <div id="cards-grid" class="cards-grid"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ═══ STATUS BAR ═══════════════════════════════════════════════════════ -->
+        <footer class="statusbar">
+            <div class="status-item">
+                <div class="status-dot"></div>
+                <span>Online</span>
+            </div>
+            <div class="status-sep"></div>
+            <div class="status-item">📡 <span id="status-total">—</span></div>
+            <div class="status-sep"></div>
+            <div class="status-item">🗂️ <span id="status-grids">—</span></div>
+            <div class="status-sep"></div>
+            <div class="status-item" style="margin-left:auto;">
+                🕐 <span id="status-time">—</span>
+            </div>
+        </footer>
+
+    </div><!-- /dashboard-shell -->
+
+    <!-- ═══ AUTH MODAL ═══════════════════════════════════════════════════════ -->
+    <div id="auth-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+        <div class="modal-box">
+            <div class="modal-glow"></div>
+            <button id="modal-close" class="modal-close" aria-label="Close">✕</button>
+            <div class="modal-icon">🔐</div>
+            <h2 id="modal-heading" class="modal-title">Sign In</h2>
+            <p class="modal-sub">Enter your credentials to enable editing</p>
+
+            <div class="form-group">
+                <label class="form-label" for="auth-user-input">Username</label>
+                <input id="auth-user-input" class="form-input" type="text" placeholder="username"
+                    autocomplete="username" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="auth-pass-input">Password</label>
+                <input id="auth-pass-input" class="form-input" type="password" placeholder="••••••••••••"
+                    autocomplete="current-password" />
+                <p id="auth-error" class="form-error">Invalid username or password.</p>
+            </div>
+
+            <button id="auth-submit" class="btn-submit">Sign In</button>
+        </div>
+    </div>
+
+    <!-- ═══ TOAST ════════════════════════════════════════════════════════════ -->
+    <div id="toast" class="toast" role="status" aria-live="polite">
+        <span id="toast-icon"></span>
+        <span id="toast-msg"></span>
+    </div>
+
+    <!-- ═══ PC DETAIL MODAL ══════════════════════════════════════════════════ -->
+    <div id="detail-modal" class="detail-modal-backdrop" role="dialog" aria-modal="true"
+        aria-labelledby="detail-modal-pc-name">
+        <div class="detail-modal-box" id="detail-modal-box">
+            <div class="detail-modal-header">
+                <div class="detail-modal-pc">
+                    <div class="detail-modal-pc-icon" id="dm-icon">🖥️</div>
+                    <div>
+                        <div class="detail-modal-pc-name" id="dm-pc-name">—</div>
+                        <div class="detail-modal-pc-grid" id="dm-grid-label">—</div>
+                    </div>
+                </div>
+                <button class="detail-modal-close" id="detail-modal-close" aria-label="Close">
+                    <svg viewBox="0 0 12 12">
+                        <line x1="1" y1="1" x2="11" y2="11" />
+                        <line x1="11" y1="1" x2="1" y2="11" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="detail-modal-body" id="dm-body">
+                <!-- populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
