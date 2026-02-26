@@ -1,4 +1,4 @@
-# NDMA Control Dashboard
+# NEOC Tech (EW) Control Dashboard
 
 A command-center style monitoring dashboard for NDMA screen grid management.
 
