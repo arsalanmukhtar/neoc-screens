@@ -7,6 +7,7 @@ const state = {
     theme: 'dark',
     isLoggedIn: false,
     carouselActive: false,
+    archiveOpen: false,
     activeIndex: 0,
     searchQuery: '',
     searchResults: new Set(),
@@ -19,8 +20,8 @@ const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadData();
     applyTheme(state.theme);
     renderOverview();
     renderCarouselDots();
@@ -75,7 +76,8 @@ function renderOverview() {
         row.appendChild(wrap);
 
         const cellGrid = wrap.querySelector(`#cellgrid-${cfg.id}`);
-        cells.forEach((cell, ci) => {
+        const visibleCells = cells.filter(c => !c.archived);
+        visibleCells.forEach((cell, ci) => {
             const div = document.createElement('div');
             div.className = 'grid-cell';
             div.id = `cell-ov-${cell.id}`;
@@ -157,6 +159,70 @@ function toggleCarousel() {
     else openCarouselAt(state.activeIndex);
 }
 
+// ─── Archive page ──────────────────────────────────────────────────────────────
+function openArchivePage() {
+    state.archiveOpen = true;
+    $('stage').style.display = 'none';
+    $('archive-page').style.display = 'flex';
+    $('btn-archive').classList.add('active');
+    renderArchivePage();
+}
+
+function closeArchivePage() {
+    state.archiveOpen = false;
+    $('archive-page').style.display = 'none';
+    $('stage').style.display = '';   // restores CSS class-driven display:flex
+    $('btn-archive').classList.remove('active');
+}
+
+function renderArchivePage() {
+    const filterEl = document.querySelector('.archive-filter-tab.active');
+    const filterVal = filterEl ? filterEl.dataset.filter : 'all';
+    const searchVal = ($('archive-search').value || '').trim().toLowerCase();
+
+    // Collect all archived cells
+    const archived = [];
+    GRID_CONFIG.forEach(cfg => {
+        GRID_DATA[cfg.id].forEach(cell => {
+            if (cell.archived) archived.push({ cell, cfg });
+        });
+    });
+
+    // Category filter
+    const filtered = archived.filter(({ cfg }) => {
+        if (filterVal === 'global')   return cfg.id === 'G1' || cfg.id === 'G2';
+        if (filterVal === 'national') return cfg.id === 'L1' || cfg.id === 'L2';
+        if (filterVal === 'cop')      return cfg.id === 'COP';
+        return true; // 'all'
+    });
+
+    // Search filter
+    const results = searchVal
+        ? filtered.filter(({ cell }) =>
+            [cell.pcNumber, cell.user, cell.ipAddress,
+             cell.portalName, cell.portalNumber, cell.portalDescription]
+                .join(' ').toLowerCase().includes(searchVal))
+        : filtered;
+
+    const grid = $('archive-cards-grid');
+    grid.innerHTML = '';
+
+    if (results.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'archive-empty';
+        empty.textContent = (searchVal || filterVal !== 'all')
+            ? 'No archived stations match your filter.'
+            : 'No archived stations yet.';
+        grid.appendChild(empty);
+        return;
+    }
+
+    results.forEach(({ cell, cfg }, ci) => {
+        const card = createCellCard(cell, cfg.colorKey, ci);
+        grid.appendChild(card);
+    });
+}
+
 function navigateCarousel(dir) {
     const newIdx = (state.activeIndex + dir + GRID_CONFIG.length) % GRID_CONFIG.length;
     state.activeIndex = newIdx;
@@ -196,10 +262,13 @@ function renderCarouselPanel() {
     $('panel-meta').textContent =
         `${cells.length} stations · ${cfg.rows} rows × ${cfg.cols} cols`;
 
-    cells.forEach((cell, ci) => {
+    const visibleCells = cells.filter(c => !c.archived);
+    visibleCells.forEach((cell, ci) => {
         const card = createCellCard(cell, cfg.colorKey, ci);
         body.appendChild(card);
     });
+    $('panel-meta').textContent =
+        `${visibleCells.length} stations · ${cfg.rows} rows × ${cfg.cols} cols`;
 }
 
 function createCellCard(cell, colorKey, animIdx) {
@@ -437,6 +506,26 @@ function openDetailModal(cellId, gridId, colorKey) {
     body.appendChild(descBlock);
 
     if (editable) {
+        const isArchived = !!cell.archived;
+        const archiveBtn = document.createElement('button');
+        archiveBtn.className = 'btn-archive-station';
+        archiveBtn.innerHTML = isArchived ? '📤 Restore Station' : '📦 Archive Station';
+        archiveBtn.addEventListener('click', () => {
+            updateCell(gridId, cell.id, 'archived', !isArchived);
+            closeDetailModal();
+            renderOverview();
+            if (state.carouselActive) renderCarouselPanel();
+            if (state.archiveOpen) renderArchivePage();
+            showToast(
+                isArchived ? '📤' : '📦',
+                isArchived ? 'Station restored' : 'Station archived',
+                'success'
+            );
+        });
+        body.appendChild(archiveBtn);
+    }
+
+    if (editable) {
         body.querySelectorAll('[contenteditable]').forEach(el => {
             el.addEventListener('blur', onFieldEdit);
             el.addEventListener('keydown', e => {
@@ -596,6 +685,21 @@ function attachListeners() {
         if (e.key === 'ArrowRight') navigateCarousel(+1);
         if (e.key === 'Escape') closeCarousel();
     });
+
+    // Archive page
+    $('btn-archive').addEventListener('click', () => {
+        if (state.archiveOpen) closeArchivePage();
+        else openArchivePage();
+    });
+    $('archive-home-btn').addEventListener('click', closeArchivePage);
+    $$('.archive-filter-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            $$('.archive-filter-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderArchivePage();
+        });
+    });
+    $('archive-search').addEventListener('input', () => renderArchivePage());
 
     // Restore theme from storage
     const saved = localStorage.getItem('ndma_theme');

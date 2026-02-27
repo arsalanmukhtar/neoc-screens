@@ -39,6 +39,14 @@
                 <button id="btn-carousel" class="btn-icon" data-tooltip="Toggle carousel"
                     aria-label="Toggle carousel view">⊞</button>
 
+                <button id="btn-archive" class="btn-icon" data-tooltip="View archive" aria-label="View archived stations">
+                    <svg viewBox="0 0 16 16" style="width:14px;height:14px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block;">
+                        <rect x="1" y="5" width="14" height="10" rx="1"/>
+                        <path d="M1 5l2-4h10l2 4"/>
+                        <line x1="6" y1="9" x2="10" y2="9"/>
+                    </svg>
+                </button>
+
                 <div id="auth-badge" class="auth-badge" role="button" tabindex="0" data-tooltip="Sign in to edit cells">
                     <div class="auth-dot"></div>
                     <span id="auth-label">Sign In</span>
@@ -47,7 +55,7 @@
         </header>
 
         <!-- ═══ MAIN STAGE ═══════════════════════════════════════════════════════ -->
-        <main class="stage">
+        <main class="stage" id="stage">
 
             <!-- All subgrids overview row -->
             <div id="overview-row" class="overview-row" role="region" aria-label="Grid overview"></div>
@@ -80,6 +88,38 @@
             </section>
 
         </main>
+
+        <!-- ═══ ARCHIVE PAGE ════════════════════════════════════════════════════ -->
+        <section id="archive-page" class="archive-page" style="display:none;" role="region" aria-label="Archived stations">
+
+            <div class="archive-header">
+                <h2 class="archive-title">Archive</h2>
+                <button id="archive-home-btn" class="btn-icon" data-tooltip="Back to dashboard" aria-label="Return home">
+                    <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block;flex-shrink:0;">
+                        <polyline points="9,2 4,7 9,12"/>
+                    </svg>
+                    Home
+                </button>
+            </div>
+
+            <div class="archive-filters">
+                <button class="archive-filter-tab active" data-filter="all">All</button>
+                <button class="archive-filter-tab" data-filter="global">Global (G1 / G2)</button>
+                <button class="archive-filter-tab" data-filter="national">National (L1 / L2)</button>
+                <button class="archive-filter-tab" data-filter="cop">COP</button>
+            </div>
+
+            <div class="search-wrap" style="max-width:400px;margin:0 0 var(--sp-2) 0;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="archive-search" class="search-input"
+                    placeholder="Search archived stations…" autocomplete="off" />
+            </div>
+
+            <div class="archive-body">
+                <div id="archive-cards-grid" class="cards-grid"></div>
+            </div>
+
+        </section>
 
         <!-- ═══ STATUS BAR ═══════════════════════════════════════════════════════ -->
         <footer class="statusbar">

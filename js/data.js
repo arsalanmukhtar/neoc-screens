@@ -42,9 +42,9 @@ const GRID_CONFIG = [
     {
         id: 'L2', label: 'L2', rows: 4, cols: 4, colorKey: 'inner',
         stations: [
-            { id: 25, pc: 21, user: 'Faisal Ahmed', portal: 'National Cryosphere Monitoring Platform', desc: 'Real-time flood monitoring and early warning dissemination' },
-            { id: 26, pc: 22, user: 'Nadia Iqbal', portal: 'National GLOF Watch', desc: 'Drought severity indices and seasonal forecast tracking' },
-            { id: 27, pc: 23, user: 'Bilal Raza', portal: 'Snow Avalanche Monitoring Platform', desc: 'Urban hazard exposure and vulnerability mapping' },
+            { id: 25, pc: 21, user: 'Seemal Naeem', portal: 'National Cryosphere Monitoring Platform', desc: 'Real-time flood monitoring and early warning dissemination' },
+            { id: 26, pc: 22, user: 'Umair Afzal', portal: 'National GLOF Watch', desc: 'Drought severity indices and seasonal forecast tracking' },
+            { id: 27, pc: 23, user: 'Saqib Javed', portal: 'Snow Avalanche Monitoring Platform', desc: 'Urban hazard exposure and vulnerability mapping' },
             { id: 28, pc: 24, user: 'Sana Javed', portal: 'National Landslide Portal', desc: 'Fire weather index, hotspot detection and risk assessment' },
             { id: 29, pc: 25, user: 'Hamza Butt', portal: 'National Hydro Analytics 2026', desc: 'Tropical cyclone, squall line and severe storm tracking' },
             { id: 30, pc: 26, user: 'Maham Tariq', portal: 'National Water Equation', desc: 'Ambient air quality, pollutant levels and health advisories' },
@@ -73,22 +73,6 @@ const GRID_CONFIG = [
     },
 ];
 
-// ─── Fallback portal/user pools (used for grids without static stations) ──────
-const PORTALS = [
-    { name: 'NDMA Central', num: '001', desc: 'Primary coordination portal' },
-    { name: 'Field Ops', num: '002', desc: 'Field operations management' },
-    { name: 'Crisis Command', num: '003', desc: 'Emergency response control' },
-    { name: 'Logistics Hub', num: '004', desc: 'Supply chain & logistics' },
-    { name: 'Comms Gateway', num: '005', desc: 'Communication relay node' },
-    { name: 'Recon Monitor', num: '006', desc: 'Reconnaissance & surveillance' },
-    { name: 'Medical Center', num: '007', desc: 'Medical response tracking' },
-    { name: 'Data Analytics', num: '008', desc: 'Real-time data dashboard' },
-];
-
-const USERS = [
-    'arsalan', 'tariq.m', 'sadia.k', 'imran.h', 'nadia.r',
-    'zubair.a', 'fatima.s', 'omar.y', 'hira.b', 'kamran.j',
-];
 
 function generateCells(gridId, rows, cols, cellLabels, stations) {
     const cells = [];
@@ -96,30 +80,30 @@ function generateCells(gridId, rows, cols, cellLabels, stations) {
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const stationIdx = c * rows + r;   // column-major: fill each column top→bottom
-            const station = stations ? (stations[stationIdx] || null) : null;
+            const station = stations[stationIdx];
             const idPrefix = gridId[0] === 'L' ? 'N' : gridId[0]; // G, N, or C
-            const portal = station
-                ? { name: station.portal, num: `${idPrefix}-${station.id}`, desc: station.desc || station.portal }
-                : PORTALS[(idx - 1) % PORTALS.length];
-            const user = station ? station.user : USERS[(idx - 1) % USERS.length];
+            const portal = {
+                name: station.portal,
+                num: `${idPrefix}-${station.id}`,
+                desc: station.desc || station.portal,
+            };
             const lastOctet = ((gridId.charCodeAt(0) * 10 + idx) % 253) + 1;
             const pcNumber = cellLabels
                 ? cellLabels[stationIdx]
-                : station
-                    ? `PC-${station.pc}`
-                    : `PC-${gridId}-${String(idx).padStart(2, '0')}`;
+                : `PC-${station.pc}`;
 
             cells.push({
                 id: `${gridId}-${String(idx).padStart(2, '0')}`,
-                stationId: station && station.id != null ? station.id : null,
+                stationId: station.id,
                 pcNumber,
-                user,
+                user: station.user,
                 ipAddress: `192.168.${(idx % 5) + 1}.${lastOctet}`,
                 portalName: portal.name,
                 portalNumber: portal.num,
                 portalDescription: portal.desc,
                 row: r,
                 col: c,
+                archived: false,
             });
             idx++;
         }
@@ -138,23 +122,25 @@ function buildInitialData() {
 
 let GRID_DATA = buildInitialData();
 
-// ─── Persist to localStorage ──────────────────────────────────────────────────
-const DATA_VERSION = '7';
-
+// ─── Persist via server API ───────────────────────────────────────────────────
 function saveData() {
-    localStorage.setItem('ndma_grid_data', JSON.stringify(GRID_DATA));
-    localStorage.setItem('ndma_version', DATA_VERSION);
+    fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(GRID_DATA),
+    }).catch(err => console.error('Save error:', err));
 }
 
-function loadData() {
-    if (localStorage.getItem('ndma_version') !== DATA_VERSION) {
-        localStorage.removeItem('ndma_grid_data');
-        localStorage.setItem('ndma_version', DATA_VERSION);
-        return;
-    }
-    const saved = localStorage.getItem('ndma_grid_data');
-    if (saved) {
-        try { GRID_DATA = JSON.parse(saved); } catch (e) { }
+async function loadData() {
+    try {
+        const res = await fetch('/api/data');
+        const saved = await res.json();
+        if (saved && typeof saved === 'object') {
+            GRID_DATA = saved;
+        }
+        // If null, GRID_DATA keeps its buildInitialData() defaults
+    } catch (e) {
+        console.warn('Could not load from server, using defaults:', e);
     }
 }
 

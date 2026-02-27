@@ -1369,3 +1369,123 @@ body {
         max-width: 280px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════
+   ARCHIVE PAGE
+   ═══════════════════════════════════════════════════════ */
+
+.archive-page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: var(--sp-6) var(--sp-8);
+    gap: var(--sp-4);
+    min-height: 0;
+}
+
+/* ─── Archive header ──────────────────────────────────── */
+.archive-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.archive-title {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--text-accent);
+    letter-spacing: var(--ls-tight);
+    margin: 0;
+}
+
+#archive-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: auto;
+    padding: 0 var(--sp-3);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+}
+
+/* ─── Filter tabs ─────────────────────────────────────── */
+.archive-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.archive-filter-tab {
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--r-full);
+    border: 1px solid var(--border-mid);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: var(--font-base);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+    transition: all var(--t-base);
+    line-height: 1.8;
+}
+
+.archive-filter-tab:hover {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+.archive-filter-tab.active {
+    background: var(--c-outer-muted);
+    border-color: var(--c-outer-base);
+    color: var(--c-outer-text);
+    box-shadow: 0 0 8px var(--c-outer-glow);
+}
+
+/* ─── Scrollable card area ────────────────────────────── */
+.archive-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    padding-bottom: var(--sp-4);
+}
+
+/* ─── Empty state ─────────────────────────────────────── */
+.archive-empty {
+    padding: var(--sp-12) var(--sp-6);
+    text-align: center;
+    font-size: var(--fs-base);
+    color: var(--text-muted);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-wide);
+}
+
+/* ─── Archive / Restore button in detail modal ────────── */
+.btn-archive-station {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+    padding: var(--sp-2) var(--sp-4);
+    width: 100%;
+    border-radius: var(--r-md);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.07);
+    color: var(--c-warn);
+    font-family: var(--font-base);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    cursor: pointer;
+    transition: all var(--t-base);
+}
+
+.btn-archive-station:hover {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: var(--c-warn);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
