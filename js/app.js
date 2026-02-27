@@ -83,7 +83,11 @@ function renderOverview() {
             div.dataset.gridId = cfg.id;
 
             const pcShort = cell.pcNumber.replace('PC-', '');
-            div.innerHTML = `<span class="cell-pc">${pcShort}</span>`;
+            const prefix = cfg.id[0] === 'L' ? 'N' : cfg.id[0]; // G, N (national), or C
+            const idLine = cell.stationId != null ? `${prefix}-${cell.stationId}` : '';
+            div.innerHTML = idLine
+                ? `<span class="cell-id">${idLine}</span><span class="cell-pc">${pcShort}</span>`
+                : `<span class="cell-pc">${pcShort}</span>`;
 
             div.addEventListener('click', (e) => {
                 e.stopPropagation();
