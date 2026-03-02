@@ -1445,6 +1445,12 @@ body {
     box-shadow: 0 0 8px var(--c-outer-glow);
 }
 
+/* ─── Search in archive context ──────────────────────── */
+.archive-page .search-wrap {
+    flex: none;
+    margin: 0;
+}
+
 /* ─── Scrollable card area ────────────────────────────── */
 .archive-body {
     flex: 1;
@@ -1456,6 +1462,7 @@ body {
 
 /* ─── Empty state ─────────────────────────────────────── */
 .archive-empty {
+    grid-column: 1 / -1;
     padding: var(--sp-12) var(--sp-6);
     text-align: center;
     font-size: var(--fs-base);

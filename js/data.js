@@ -35,40 +35,40 @@ const GRID_CONFIG = [
     {
         id: 'COP', label: 'COP', rows: 1, cols: 2, colorKey: 'mid', cellLabels: ['GCOP', 'NCOP'],
         stations: [
-            { id: 23, pc: 43, user: 'Syed Mustafa Haider', portal: 'GCOP', desc: 'Global coordination and operations portal for all-hazard management' },
-            { id: 24, pc: 42, user: 'Muhammad Arsalan Mukhtar', portal: 'NCOP', desc: 'National coordination and operations portal for domestic response' },
+            { id: 1, pc: 43, user: 'Syed Mustafa Haider', portal: 'GCOP', desc: 'Global coordination and operations portal for all-hazard management' },
+            { id: 2, pc: 42, user: 'Muhammad Arsalan Mukhtar', portal: 'NCOP', desc: 'National coordination and operations portal for domestic response' },
         ],
     },
     {
         id: 'L2', label: 'L2', rows: 4, cols: 4, colorKey: 'inner',
         stations: [
-            { id: 25, pc: 21, user: 'Seemal Naeem', portal: 'National Cryosphere Monitoring Platform', desc: 'Real-time flood monitoring and early warning dissemination' },
-            { id: 26, pc: 22, user: 'Umair Afzal', portal: 'National GLOF Watch', desc: 'Drought severity indices and seasonal forecast tracking' },
-            { id: 27, pc: 23, user: 'Saqib Javed', portal: 'Snow Avalanche Monitoring Platform', desc: 'Urban hazard exposure and vulnerability mapping' },
-            { id: 28, pc: 24, user: 'Sana Javed', portal: 'National Landslide Portal', desc: 'Fire weather index, hotspot detection and risk assessment' },
-            { id: 29, pc: 25, user: 'Hamza Butt', portal: 'National Hydro Analytics 2026', desc: 'Tropical cyclone, squall line and severe storm tracking' },
-            { id: 30, pc: 26, user: 'Maham Tariq', portal: 'National Water Equation', desc: 'Ambient air quality, pollutant levels and health advisories' },
-            { id: 31, pc: 27, user: 'Usman Cheema', portal: 'National Coast Watch', desc: 'Landslide susceptibility modelling and event detection' },
-            { id: 32, pc: 28, user: 'Ayesha Noor', portal: 'National Seismic & Tsunami Watch', desc: 'River stage, discharge and flood threshold monitoring' },
-            { id: 33, pc: 29, user: 'Waseem Ali', portal: 'National Agriculture Watch', desc: 'Reservoir storage levels, inflow and outflow tracking' },
-            { id: 34, pc: 30, user: 'Rabia Shah', portal: 'National Drought Monitoring Portal', desc: 'Snow extent, depth and snow-water equivalent analysis' },
-            { id: 35, pc: 31, user: 'Asad Mehmood', portal: 'Pakistan Heatwave Portal', desc: 'Precipitation radar composite and short-range nowcasting' },
-            { id: 36, pc: 32, user: 'Zara Khalid', portal: 'National Wildfire Monitoring Portal', desc: 'Geospatial data operations, basemap and map service management' },
-            { id: 37, pc: 33, user: 'Tariq Mehmood', portal: 'E-MHVRA Portal', desc: 'National disaster event registry, records and reporting' },
-            { id: 38, pc: 42, user: 'Hina Baig', portal: 'ARC', desc: 'Active disaster response operations and resource tracking' },
-            { id: 39, pc: 43, user: 'Saad Yousuf', portal: 'NEOC AI-Based Early Warning System', desc: 'Rapid damage, loss and needs assessment portal' },
-            { id: 40, pc: 45, user: 'Naila Awan', portal: 'Air Quality Monitoring Platform', desc: 'Post-disaster recovery progress and rehabilitation monitoring' },
+            { id: 1, pc: 49, user: 'Seemal Naeem', portal: 'National Cryosphere Monitoring Platform', desc: 'Real-time flood monitoring and early warning dissemination' },
+            { id: 2, pc: 45, user: 'Umair Afzal', portal: 'National GLOF Watch', desc: 'Drought severity indices and seasonal forecast tracking' },
+            { id: 3, pc: 50, user: 'Saqib Javed', portal: 'Snow Avalanche Monitoring Platform', desc: 'Urban hazard exposure and vulnerability mapping' },
+            { id: 4, pc: 23, user: 'Yasir Jameel', portal: 'National Landslide Portal', desc: 'Fire weather index, hotspot detection and risk assessment' },
+            { id: 5, pc: 18, user: 'Ibrahim Abdullah', portal: 'National Hydro Analytics 2026', desc: 'Tropical cyclone, squall line and severe storm tracking' },
+            { id: 6, pc: 17, user: 'Ahad Khan', portal: 'National Water Equation', desc: 'Ambient air quality, pollutant levels and health advisories' },
+            { id: 7, pc: "2-J", user: 'Ayman Fatima', portal: 'National Seismic & Tsunami Watch', desc: 'Landslide susceptibility modelling and event detection' },
+            { id: 8, pc: 46, user: 'Anum Bashir', portal: 'National Coast Watch', desc: 'River stage, discharge and flood threshold monitoring' },
+            { id: 9, pc: 47, user: 'Maryam Khalid', portal: 'National Agriculture Watch', desc: 'Reservoir storage levels, inflow and outflow tracking' },
+            { id: 10, pc: 20, user: 'Saba Shahzadi', portal: 'National Drought Monitoring Portal', desc: 'Snow extent, depth and snow-water equivalent analysis' },
+            { id: 11, pc: 48, user: 'Abdul Sattar', portal: 'Pakistan Heatwave Portal', desc: 'Precipitation radar composite and short-range nowcasting' },
+            { id: 12, pc: 26, user: 'Sheikh Laraib', portal: 'National Wildfire Monitoring Portal', desc: 'Geospatial data operations, basemap and map service management' },
+            { id: 13, pc: 57, user: 'Bilavel Raza', portal: 'E-MHVRA Portal', desc: 'National disaster event registry, records and reporting' },
+            { id: 14, pc: 25, user: 'Raja Umair', portal: 'NCOP ARC', desc: 'Active disaster response operations and resource tracking' },
+            { id: 15, pc: 15, user: 'Jamal Abdul Nasir', portal: 'NEOC AI-Based Early Warning System', desc: 'Rapid damage, loss and needs assessment portal' },
+            { id: 16, pc: 54, user: 'Tanveer Ahmed', portal: 'Air Quality Monitoring Platform', desc: 'Post-disaster recovery progress and rehabilitation monitoring' },
         ],
     },
     {
         id: 'L1', label: 'L1', rows: 3, cols: 2, colorKey: 'outer',
         stations: [
-            { id: 41, pc: 46, user: 'Danish Saeed', portal: 'Accumulated Precipitation', desc: 'Seismic activity monitoring and earthquake early warning system' },
-            { id: 42, pc: 47, user: 'Lubna Farooq', portal: 'Sub-Continent Bulk Shear & Anomaly', desc: 'Tsunami detection, propagation modelling and coastal alerts' },
-            { id: 43, pc: 48, user: 'Khalid Mahmood', portal: 'Precipitation Outlook 2026', desc: 'Volcanic eruption monitoring and ash dispersion tracking' },
-            { id: 44, pc: 49, user: 'Aneela Khan', portal: 'Total Precipitation', desc: 'Extreme heat monitoring, health risk index and advisories' },
-            { id: 45, pc: 50, user: 'Rizwan Ul Haq', portal: 'National Hazard Calendar', desc: 'Cold weather event detection, frost warnings and alerts' },
-            { id: 46, pc: 51, user: 'Bushra Aslam', portal: 'Temperature Outlook 2026', desc: 'Dust and sand storm detection, forecast and visibility alerts' },
+            { id: 17, pc: 22, user: 'Sajid Ali', portal: 'Accumulated Precipitation', desc: 'Seismic activity monitoring and earthquake early warning system' },
+            { id: 18, pc: 52, user: 'Reserved', portal: 'Sub-Continent Bulk Shear & Anomaly', desc: 'Station reserved for future assignment' },
+            { id: 19, pc: 21, user: 'Tayyab Jadoon', portal: 'Precipitation Outlook 2026', desc: 'Tsunami detection, propagation modelling and coastal alerts' },
+            { id: 20, pc: 19, user: 'Waqar Hussain', portal: 'Total Precipitation', desc: 'Volcanic eruption monitoring and ash dispersion tracking' },
+            { id: 21, pc: 51, user: 'Nayab Ahmed', portal: 'National Hazard Calendar', desc: 'Cold weather event detection, frost warnings and alerts' },
+            { id: 22, pc: 14, user: 'Ayman Fatima', portal: 'Temperature Outlook 2026', desc: 'Dust and sand storm detection, forecast and visibility alerts' },
         ],
     },
 ];
@@ -103,7 +103,7 @@ function generateCells(gridId, rows, cols, cellLabels, stations) {
                 portalDescription: portal.desc,
                 row: r,
                 col: c,
-                archived: false,
+                archived: station.archived || false,
             });
             idx++;
         }
@@ -122,32 +122,3 @@ function buildInitialData() {
 
 let GRID_DATA = buildInitialData();
 
-// ─── Persist via server API ───────────────────────────────────────────────────
-function saveData() {
-    fetch('/api/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(GRID_DATA),
-    }).catch(err => console.error('Save error:', err));
-}
-
-async function loadData() {
-    try {
-        const res = await fetch('/api/data');
-        const saved = await res.json();
-        if (saved && typeof saved === 'object') {
-            GRID_DATA = saved;
-        }
-        // If null, GRID_DATA keeps its buildInitialData() defaults
-    } catch (e) {
-        console.warn('Could not load from server, using defaults:', e);
-    }
-}
-
-function updateCell(gridId, cellId, field, value) {
-    const cell = GRID_DATA[gridId].find(c => c.id === cellId);
-    if (cell) {
-        cell[field] = value;
-        saveData();
-    }
-}

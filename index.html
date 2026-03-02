@@ -46,11 +46,6 @@
                         <line x1="6" y1="9" x2="10" y2="9"/>
                     </svg>
                 </button>
-
-                <div id="auth-badge" class="auth-badge" role="button" tabindex="0" data-tooltip="Sign in to edit cells">
-                    <div class="auth-dot"></div>
-                    <span id="auth-label">Sign In</span>
-                </div>
             </div>
         </header>
 
@@ -138,32 +133,6 @@
         </footer>
 
     </div><!-- /dashboard-shell -->
-
-    <!-- ═══ AUTH MODAL ═══════════════════════════════════════════════════════ -->
-    <div id="auth-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
-        <div class="modal-box">
-            <div class="modal-glow"></div>
-            <button id="modal-close" class="modal-close" aria-label="Close">✕</button>
-            <div class="modal-icon">🔐</div>
-            <h2 id="modal-heading" class="modal-title">Sign In</h2>
-            <p class="modal-sub">Enter your credentials to enable editing</p>
-
-            <div class="form-group">
-                <label class="form-label" for="auth-user-input">Username</label>
-                <input id="auth-user-input" class="form-input" type="text" placeholder="username"
-                    autocomplete="username" />
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="auth-pass-input">Password</label>
-                <input id="auth-pass-input" class="form-input" type="password" placeholder="••••••••••••"
-                    autocomplete="current-password" />
-                <p id="auth-error" class="form-error">Invalid username or password.</p>
-            </div>
-
-            <button id="auth-submit" class="btn-submit">Sign In</button>
-        </div>
-    </div>
 
     <!-- ═══ TOAST ════════════════════════════════════════════════════════════ -->
     <div id="toast" class="toast" role="status" aria-live="polite">

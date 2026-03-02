@@ -5,7 +5,6 @@
 // ─── App State ────────────────────────────────────────────────────────────────
 const state = {
     theme: 'dark',
-    isLoggedIn: false,
     carouselActive: false,
     archiveOpen: false,
     activeIndex: 0,
@@ -13,21 +12,17 @@ const state = {
     searchResults: new Set(),
 };
 
-const CREDS = { user: 'arsalan', pass: 'developer.ndma@123' };
-
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadData();
+document.addEventListener('DOMContentLoaded', () => {
     applyTheme(state.theme);
     renderOverview();
     renderCarouselDots();
     renderCarouselPanel();
     attachListeners();
-    updateAuthUI();
     updateStatusBar();
 });
 
@@ -58,8 +53,6 @@ function renderOverview() {
         wrap.dataset.index = idx;
         wrap.setAttribute('data-tooltip', `${cfg.label} — ${cfg.rows}×${cfg.cols}`);
 
-        const totalCells = cfg.rows * cfg.cols;
-
         wrap.innerHTML = `
       <div class="subgrid-label">
         <div class="subgrid-label-dot"></div>
@@ -77,7 +70,7 @@ function renderOverview() {
 
         const cellGrid = wrap.querySelector(`#cellgrid-${cfg.id}`);
         const visibleCells = cells.filter(c => !c.archived);
-        visibleCells.forEach((cell, ci) => {
+        visibleCells.forEach((cell) => {
             const div = document.createElement('div');
             div.className = 'grid-cell';
             div.id = `cell-ov-${cell.id}`;
@@ -85,7 +78,7 @@ function renderOverview() {
             div.dataset.gridId = cfg.id;
 
             const pcShort = cell.pcNumber.replace('PC-', '');
-            const prefix = cfg.id[0] === 'L' ? 'N' : cfg.id[0]; // G, N (national), or C
+            const prefix = cfg.id[0] === 'L' ? 'N' : cfg.id[0];
             const idLine = cell.stationId != null ? `${prefix}-${cell.stationId}` : '';
             div.innerHTML = idLine
                 ? `<span class="cell-id">${idLine}</span><span class="cell-pc">${pcShort}</span>`
@@ -99,7 +92,6 @@ function renderOverview() {
             cellGrid.appendChild(div);
         });
 
-        // Click on subgrid to open carousel
         wrap.addEventListener('click', () => openCarouselAt(idx));
     });
 }
@@ -114,9 +106,7 @@ function renderCarouselDots() {
         dot.className = `carousel-dot${idx === state.activeIndex ? ' active' : ''}`;
         dot.dataset.color = cfg.colorKey;
         dot.dataset.index = idx;
-        dot.addEventListener('click', () => {
-            openCarouselAt(idx);
-        });
+        dot.addEventListener('click', () => openCarouselAt(idx));
         container.appendChild(dot);
     });
 }
@@ -171,7 +161,7 @@ function openArchivePage() {
 function closeArchivePage() {
     state.archiveOpen = false;
     $('archive-page').style.display = 'none';
-    $('stage').style.display = '';   // restores CSS class-driven display:flex
+    $('stage').style.display = '';
     $('btn-archive').classList.remove('active');
 }
 
@@ -180,7 +170,6 @@ function renderArchivePage() {
     const filterVal = filterEl ? filterEl.dataset.filter : 'all';
     const searchVal = ($('archive-search').value || '').trim().toLowerCase();
 
-    // Collect all archived cells
     const archived = [];
     GRID_CONFIG.forEach(cfg => {
         GRID_DATA[cfg.id].forEach(cell => {
@@ -188,15 +177,13 @@ function renderArchivePage() {
         });
     });
 
-    // Category filter
     const filtered = archived.filter(({ cfg }) => {
         if (filterVal === 'global')   return cfg.id === 'G1' || cfg.id === 'G2';
         if (filterVal === 'national') return cfg.id === 'L1' || cfg.id === 'L2';
         if (filterVal === 'cop')      return cfg.id === 'COP';
-        return true; // 'all'
+        return true;
     });
 
-    // Search filter
     const results = searchVal
         ? filtered.filter(({ cell }) =>
             [cell.pcNumber, cell.user, cell.ipAddress,
@@ -212,7 +199,7 @@ function renderArchivePage() {
         empty.className = 'archive-empty';
         empty.textContent = (searchVal || filterVal !== 'all')
             ? 'No archived stations match your filter.'
-            : 'No archived stations yet.';
+            : 'No archived stations.';
         grid.appendChild(empty);
         return;
     }
@@ -256,11 +243,8 @@ function renderCarouselPanel() {
     const body = $('cards-grid');
     body.innerHTML = '';
 
-    // panel title
-    $('panel-title').innerHTML =
-        `Subgrid <strong>${cfg.label}</strong>`;
-    $('panel-meta').textContent =
-        `${cells.length} stations · ${cfg.rows} rows × ${cfg.cols} cols`;
+    $('panel-title').innerHTML = `Subgrid <strong>${cfg.label}</strong>`;
+    $('panel-meta').textContent = `${cells.length} stations · ${cfg.rows} rows × ${cfg.cols} cols`;
 
     const visibleCells = cells.filter(c => !c.archived);
     visibleCells.forEach((cell, ci) => {
@@ -283,8 +267,6 @@ function createCellCard(cell, colorKey, animIdx) {
     animation-delay: ${animIdx * 35}ms;
   `;
 
-    const editable = state.isLoggedIn;
-
     const fields = [
         { key: 'user', label: 'User', icon: '👤' },
         { key: 'ipAddress', label: 'IP Addr', icon: '🌐', mono: true },
@@ -294,25 +276,15 @@ function createCellCard(cell, colorKey, animIdx) {
 
     const fieldsHTML = fields.map(f => {
         const val = escHtml(cell[f.key] || '—');
-        const cls = [
-            'card-field-value',
-            f.mono ? 'card-ip' : '',
-            editable ? 'editable' : '',
-        ].filter(Boolean).join(' ');
-
-        const attrs = editable
-            ? `contenteditable="true" data-cell="${cell.id}" data-grid="${cell.id.split('-')[0]}" data-field="${f.key}" data-grid-id="${getGridIdFromCellId(cell.id)}"`
-            : '';
-
+        const cls = ['card-field-value', f.mono ? 'card-ip' : ''].filter(Boolean).join(' ');
         return `
       <div class="card-field">
         <span class="card-field-label">${f.label}</span>
-        <span class="${cls}" ${attrs}>${val}</span>
+        <span class="${cls}">${val}</span>
       </div>
     `;
     }).join('');
 
-    // Description as a hyperlink that opens the detail modal
     const descLinkHTML = `
     <div class="card-field">
       <span class="card-field-label">Description</span>
@@ -332,17 +304,6 @@ function createCellCard(cell, colorKey, animIdx) {
     ${descLinkHTML}
   `;
 
-    // attach edit listeners for non-description fields
-    if (editable) {
-        card.querySelectorAll('[contenteditable]').forEach(el => {
-            el.addEventListener('blur', onFieldEdit);
-            el.addEventListener('keydown', e => {
-                if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
-            });
-        });
-    }
-
-    // description link → open detail modal
     card.querySelector('.card-desc-link').addEventListener('click', (e) => {
         e.stopPropagation();
         openDetailModal(cell.id, getGridIdFromCellId(cell.id), colorKey);
@@ -352,37 +313,8 @@ function createCellCard(cell, colorKey, animIdx) {
 }
 
 function getGridIdFromCellId(cellId) {
-    // cellId like "L1-01" or "R2-09"
     const parts = cellId.split('-');
     return parts.length >= 2 ? parts[0] : cellId;
-}
-
-function onFieldEdit(e) {
-    const el = e.currentTarget;
-    const gridId = el.dataset.gridId;
-    const cellId = el.dataset.cell;
-    const field = el.dataset.field;
-    const value = el.textContent.trim();
-
-    if (!gridId || !cellId || !field) return;
-
-    updateCell(gridId, cellId, field, value);
-
-    // also update overview cell pc if pcNumber changed
-    if (field === 'pcNumber') {
-        const ovCell = $(`cell-ov-${cellId}`);
-        if (ovCell) {
-            const pcShort = value.replace('PC-', '');
-            ovCell.querySelector('.cell-pc').textContent = pcShort;
-        }
-    }
-
-    showToast('✏️', `${field} updated`, 'success');
-}
-
-function scrollToCard(cellId) {
-    const card = $(`card-${cellId}`);
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ─── Search ────────────────────────────────────────────────────────────────────
@@ -404,8 +336,6 @@ function applySearch() {
 
     GRID_CONFIG.forEach(cfg => {
         const cells = GRID_DATA[cfg.id];
-        let gridHasMatch = false;
-
         cells.forEach(cell => {
             const haystack = [
                 cell.pcNumber, cell.user, cell.ipAddress,
@@ -418,11 +348,10 @@ function applySearch() {
                 ovCell.classList.toggle('search-match', matches);
                 ovCell.classList.toggle('search-miss', !matches);
             }
-            if (matches) { gridHasMatch = true; matchedGrids.add(cfg.id); }
+            if (matches) matchedGrids.add(cfg.id);
         });
     });
 
-    // dim subgrids with no matches
     $$('.subgrid-wrap').forEach(w => {
         const gid = w.dataset.gridId;
         w.style.opacity = matchedGrids.has(gid) ? '' : '0.3';
@@ -442,7 +371,6 @@ function openDetailModal(cellId, gridId, colorKey) {
 
     const cv = COLOR_VARS[colorKey] || COLOR_VARS.outer;
     const box = $('detail-modal-box');
-    const editable = state.isLoggedIn;
 
     box.style.setProperty('--dm-color', `var(${cv.base})`);
     box.style.setProperty('--dm-color-glow', `var(${cv.glow})`);
@@ -455,13 +383,6 @@ function openDetailModal(cellId, gridId, colorKey) {
     const body = $('dm-body');
     body.innerHTML = '';
 
-    if (editable) {
-        const hint = document.createElement('div');
-        hint.className = 'detail-edit-hint';
-        hint.innerHTML = `<span>✏️</span> Click any field to edit — changes save on blur`;
-        body.appendChild(hint);
-    }
-
     const mainFields = [
         { key: 'pcNumber', label: 'PC Number', mono: true },
         { key: 'user', label: 'User' },
@@ -473,13 +394,10 @@ function openDetailModal(cellId, gridId, colorKey) {
     mainFields.forEach(f => {
         const row = document.createElement('div');
         row.className = 'detail-field-row';
-        const cls = ['detail-field-value', f.mono ? 'mono' : '', editable ? 'editable' : ''].filter(Boolean).join(' ');
-        const attrs = editable
-            ? `contenteditable="true" data-cell="${cell.id}" data-grid-id="${gridId}" data-field="${f.key}"`
-            : '';
+        const cls = ['detail-field-value', f.mono ? 'mono' : ''].filter(Boolean).join(' ');
         row.innerHTML = `
       <span class="detail-field-label">${f.label}</span>
-      <span class="${cls}" ${attrs}>${escHtml(cell[f.key] || '—')}</span>
+      <span class="${cls}">${escHtml(cell[f.key] || '—')}</span>
     `;
         body.appendChild(row);
     });
@@ -495,107 +413,15 @@ function openDetailModal(cellId, gridId, colorKey) {
     body.appendChild(descLabel);
 
     const descBlock = document.createElement('div');
-    descBlock.className = 'detail-desc-block' + (editable ? ' editable' : '');
-    if (editable) {
-        descBlock.setAttribute('contenteditable', 'true');
-        descBlock.dataset.cell = cell.id;
-        descBlock.dataset.gridId = gridId;
-        descBlock.dataset.field = 'portalDescription';
-    }
+    descBlock.className = 'detail-desc-block';
     descBlock.textContent = cell.portalDescription || '—';
     body.appendChild(descBlock);
-
-    if (editable) {
-        const isArchived = !!cell.archived;
-        const archiveBtn = document.createElement('button');
-        archiveBtn.className = 'btn-archive-station';
-        archiveBtn.innerHTML = isArchived ? '📤 Restore Station' : '📦 Archive Station';
-        archiveBtn.addEventListener('click', () => {
-            updateCell(gridId, cell.id, 'archived', !isArchived);
-            closeDetailModal();
-            renderOverview();
-            if (state.carouselActive) renderCarouselPanel();
-            if (state.archiveOpen) renderArchivePage();
-            showToast(
-                isArchived ? '📤' : '📦',
-                isArchived ? 'Station restored' : 'Station archived',
-                'success'
-            );
-        });
-        body.appendChild(archiveBtn);
-    }
-
-    if (editable) {
-        body.querySelectorAll('[contenteditable]').forEach(el => {
-            el.addEventListener('blur', onFieldEdit);
-            el.addEventListener('keydown', e => {
-                if (e.key === 'Enter' && !e.shiftKey && el !== descBlock) {
-                    e.preventDefault(); el.blur();
-                }
-            });
-        });
-    }
 
     $('detail-modal').classList.add('open');
 }
 
 function closeDetailModal() {
     $('detail-modal').classList.remove('open');
-}
-
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-function openAuthModal() {
-    if (state.isLoggedIn) {
-        logout();
-        return;
-    }
-    $('auth-modal').classList.add('open');
-    setTimeout(() => $('auth-user-input').focus(), 150);
-}
-
-function closeAuthModal() {
-    $('auth-modal').classList.remove('open');
-    $('auth-error').classList.remove('show');
-    $('auth-user-input').value = '';
-    $('auth-pass-input').value = '';
-}
-
-function attemptLogin() {
-    const u = $('auth-user-input').value.trim();
-    const p = $('auth-pass-input').value;
-
-    if (u === CREDS.user && p === CREDS.pass) {
-        state.isLoggedIn = true;
-        closeAuthModal();
-        updateAuthUI();
-        if (state.carouselActive) renderCarouselPanel();
-        showToast('🔓', `Welcome back, ${u}!`, 'success');
-    } else {
-        $('auth-error').classList.add('show');
-        $('auth-pass-input').value = '';
-        $('auth-pass-input').focus();
-    }
-}
-
-function logout() {
-    state.isLoggedIn = false;
-    updateAuthUI();
-    if (state.carouselActive) renderCarouselPanel();
-    showToast('🔒', 'Signed out', 'success');
-}
-
-function updateAuthUI() {
-    const badge = $('auth-badge');
-    const label = $('auth-label');
-    if (state.isLoggedIn) {
-        badge.classList.add('logged-in');
-        label.textContent = 'arsalan';
-        badge.setAttribute('data-tooltip', 'Click to sign out');
-    } else {
-        badge.classList.remove('logged-in');
-        label.textContent = 'Sign In';
-        badge.setAttribute('data-tooltip', 'Sign in to edit cells');
-    }
 }
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
@@ -654,20 +480,6 @@ function attachListeners() {
         }
     });
 
-    // Auth
-    $('auth-badge').addEventListener('click', openAuthModal);
-    $('modal-close').addEventListener('click', closeAuthModal);
-    $('auth-modal').addEventListener('click', e => {
-        if (e.target === $('auth-modal')) closeAuthModal();
-    });
-    $('auth-submit').addEventListener('click', attemptLogin);
-    $('auth-pass-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') attemptLogin();
-    });
-    $('auth-user-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') $('auth-pass-input').focus();
-    });
-
     // Detail modal close
     $('detail-modal-close').addEventListener('click', closeDetailModal);
     $('detail-modal').addEventListener('click', e => {
@@ -677,9 +489,9 @@ function attachListeners() {
         if (e.key === 'Escape' && $('detail-modal').classList.contains('open')) {
             closeDetailModal();
         }
-    }, true);  // capture so it fires even when carousel is active
+    }, true);
     document.addEventListener('keydown', e => {
-        if (e.target.tagName === 'INPUT' || e.target.getAttribute('contenteditable')) return;
+        if (e.target.tagName === 'INPUT') return;
         if (!state.carouselActive) return;
         if (e.key === 'ArrowLeft') navigateCarousel(-1);
         if (e.key === 'ArrowRight') navigateCarousel(+1);
