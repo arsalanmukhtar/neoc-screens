@@ -406,16 +406,153 @@ function openDetailModal(cellId, gridId, colorKey) {
     hr.className = 'detail-divider';
     body.appendChild(hr);
 
-    const descLabel = document.createElement('div');
-    descLabel.className = 'detail-field-label';
-    descLabel.style.marginBottom = 'var(--sp-2)';
-    descLabel.textContent = 'Description';
-    body.appendChild(descLabel);
+    // ── Portal Access ─────────────────────────────────────────
+    const accessSection = document.createElement('div');
+    accessSection.className = 'detail-access-section';
+
+    const accessHeading = document.createElement('div');
+    accessHeading.className = 'detail-section-heading';
+    accessHeading.innerHTML = `
+      <svg viewBox="0 0 14 14" style="width:10px;height:10px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0;">
+        <rect x="1" y="3" width="12" height="9" rx="1.5"/>
+        <path d="M1 7h12"/>
+        <path d="M5 3V1M9 3V1"/>
+      </svg>
+      Portal Access`;
+    accessSection.appendChild(accessHeading);
+
+    const port     = cell.portalPort  || '';
+    const ip       = cell.ipAddress   || '';
+    const srvType  = cell.serverType  || '';
+    const projDir  = cell.projectDir  || '';
+    const pathSuffix = cell.portalPath ? '/' + cell.portalPath.replace(/^\//, '') : '';
+
+    if (!port && !srvType) {
+        const noInfo = document.createElement('p');
+        noInfo.className = 'detail-access-empty';
+        noInfo.textContent = 'No portal access configured for this station.';
+        accessSection.appendChild(noInfo);
+    } else {
+        // ── Server type badge ──────────────────────────────────
+        if (srvType) {
+            const typeLabels = {
+                vscode:  'VS Code Live Server',
+                npm:     'Node (npm) Server',
+                browser: 'Direct Browser Access',
+            };
+            const typeBadge = document.createElement('div');
+            typeBadge.className = `detail-access-type-badge access-type-${srvType}`;
+            typeBadge.textContent = typeLabels[srvType] || srvType;
+            accessSection.appendChild(typeBadge);
+        }
+
+        // Helper: build a label + content row
+        const mkRow = (label, contentEl) => {
+            const row = document.createElement('div');
+            row.className = 'detail-access-info-row';
+            const lbl = document.createElement('span');
+            lbl.className = 'access-info-label';
+            lbl.textContent = label;
+            row.appendChild(lbl);
+            row.appendChild(contentEl);
+            return row;
+        };
+
+        // ── Project folder (vscode / npm only) ────────────────
+        if (projDir && (srvType === 'vscode' || srvType === 'npm')) {
+            const val = document.createElement('span');
+            val.className = 'access-info-value mono';
+            val.textContent = projDir;
+            accessSection.appendChild(mkRow('Folder', val));
+        }
+
+        // ── How to start ───────────────────────────────────────
+        const howToMap = {
+            vscode: [
+                'Open the project folder in VS Code',
+                'In the Explorer panel, right-click index.html',
+                'Select "Open with Live Server"',
+            ],
+            npm: [
+                'Open a terminal window',
+                'Navigate (cd) to the project folder',
+                'Run: npm start OR npm run dev',
+            ],
+            browser: [
+                'No local setup required on this machine',
+                'Open the URL below in any browser on this network',
+            ],
+        };
+        const steps = howToMap[srvType];
+        if (steps) {
+            const ol = document.createElement('ol');
+            ol.className = 'access-info-steps';
+            steps.forEach(s => {
+                const li = document.createElement('li');
+                li.textContent = s;
+                ol.appendChild(li);
+            });
+            accessSection.appendChild(mkRow('Start', ol));
+        }
+
+        // ── Browser URL ────────────────────────────────────────
+        if (port) {
+            let url;
+            if (srvType === 'vscode') {
+                url = `http://127.0.0.1:${port}${pathSuffix}`;
+            } else if (srvType === 'npm') {
+                url = `http://localhost:${port}${pathSuffix}`;
+            } else if (srvType === 'browser') {
+                url = ip ? `http://${ip}:${port}${pathSuffix}` : `http://localhost:${port}${pathSuffix}`;
+            } else {
+                url = `http://localhost:${port}${pathSuffix}`;
+            }
+            const val = document.createElement('span');
+            val.className = 'access-info-value mono access-url';
+            val.textContent = url;
+            accessSection.appendChild(mkRow('Open in', val));
+        }
+
+        // ── IP : Port badge ────────────────────────────────────
+        const ipBadge = document.createElement('div');
+        ipBadge.className = 'detail-access-ip-badge';
+        ipBadge.innerHTML = `
+          <svg viewBox="0 0 14 14" style="width:11px;height:11px;stroke:currentColor;stroke-width:2;stroke-linecap:round;fill:none;flex-shrink:0;">
+            <circle cx="7" cy="7" r="5.5"/>
+            <path d="M7 1.5C5.5 3.5 4.5 5.2 4.5 7s1 3.5 2.5 5.5"/>
+            <path d="M7 1.5C8.5 3.5 9.5 5.2 9.5 7s-1 3.5-2.5 5.5"/>
+            <line x1="1.5" y1="7" x2="12.5" y2="7"/>
+          </svg>
+          <span class="access-ip">${ip || '—'}</span>
+          <span class="access-sep">:</span>
+          <span class="access-port">${port || '—'}</span>
+        `;
+        accessSection.appendChild(ipBadge);
+    }
+
+    body.appendChild(accessSection);
+
+    // ── About ─────────────────────────────────────────────────
+    const aboutSection = document.createElement('div');
+    aboutSection.className = 'detail-about-section';
+
+    const aboutHeading = document.createElement('div');
+    aboutHeading.className = 'detail-section-heading';
+    aboutHeading.innerHTML = `
+      <svg viewBox="0 0 14 14" style="width:10px;height:10px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0;">
+        <circle cx="7" cy="7" r="5.5"/>
+        <line x1="7" y1="5" x2="7" y2="9.5"/>
+        <line x1="7" y1="3.5" x2="7" y2="4.2"/>
+      </svg>
+      About`;
+    aboutSection.appendChild(aboutHeading);
 
     const descBlock = document.createElement('div');
     descBlock.className = 'detail-desc-block';
     descBlock.textContent = cell.portalDescription || '—';
-    body.appendChild(descBlock);
+    aboutSection.appendChild(descBlock);
+
+    body.appendChild(aboutSection);
 
     $('detail-modal').classList.add('open');
 }

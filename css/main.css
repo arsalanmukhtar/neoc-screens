@@ -1041,6 +1041,149 @@ body {
     margin: 0;
 }
 
+/* ─── Detail modal — section headings ────────────────── */
+.detail-section-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--ls-wider);
+    text-transform: uppercase;
+    color: var(--dm-color, var(--text-muted));
+    margin-bottom: var(--sp-3);
+}
+
+.detail-section-heading::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--dm-color, var(--border-subtle));
+    opacity: 0.25;
+}
+
+/* ─── Portal Access section ──────────────────────────── */
+.detail-access-section {
+    margin-top: var(--sp-4);
+}
+
+.detail-access-empty {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    font-style: italic;
+    margin: var(--sp-2) 0;
+}
+
+/* Server type badge */
+.detail-access-type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--r-full);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    margin-bottom: var(--sp-3);
+    border: 1px solid transparent;
+}
+
+.access-type-vscode {
+    background: rgba(0, 122, 204, 0.12);
+    color: #4ea8f7;
+    border-color: rgba(0, 122, 204, 0.3);
+}
+
+.access-type-npm {
+    background: rgba(203, 56, 55, 0.12);
+    color: #f97171;
+    border-color: rgba(203, 56, 55, 0.3);
+}
+
+.access-type-browser {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* Info rows */
+.detail-access-info-row {
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    align-items: start;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.access-info-label {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: var(--ls-wide);
+    color: var(--text-muted);
+    padding-top: 2px;
+    white-space: nowrap;
+}
+
+.access-info-value {
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.access-info-value.mono {
+    font-family: var(--font-mono);
+    word-break: break-all;
+}
+
+.access-url {
+    color: var(--dm-color, var(--text-accent));
+}
+
+.access-info-steps {
+    margin: 0;
+    padding-left: var(--sp-5);
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    line-height: 1.9;
+}
+
+/* IP : Port badge */
+.detail-access-ip-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    margin-top: var(--sp-3);
+    background: var(--dm-color-muted, var(--bg-elevated));
+    border: 1px solid var(--dm-color, var(--border-mid));
+    border-radius: var(--r-md);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--dm-color-text, var(--text-primary));
+    box-shadow: 0 0 10px var(--dm-color-glow, transparent);
+}
+
+.access-ip {
+    letter-spacing: 0.03em;
+}
+
+.access-sep {
+    opacity: 0.35;
+    margin: 0 var(--sp-1);
+}
+
+.access-port {
+    letter-spacing: 0.04em;
+}
+
+/* ─── About section ──────────────────────────────────── */
+.detail-about-section {
+    margin-top: var(--sp-5);
+}
+
 /* ─── Auth Modal ──────────────────────────────────────── */
 .modal-backdrop {
     position: fixed;
