@@ -23,7 +23,7 @@ const GRID_CONFIG = [
             { id: 13, pc: 8, user: 'Osama Khan', portal: 'Global Carbon Atlas', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 14, pc: 36, user: 'Sajid Inam', portal: 'Global Wildfire Monitoring', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 15, pc: 6, user: 'Zeeshan Nasir', portal: 'Global Hydromet', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
-            { id: 16, pc: 35, user: 'Shahfukh Malik', portal: 'Global Terrestrial Water', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
+            { id: 16, pc: 35, user: 'Shahrukh Malik', portal: 'Global Terrestrial Water', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 17, pc: 12, user: 'Hizbullah Jadoon', portal: 'Global Hydrological Portal', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 18, pc: 5, user: 'Abdul Ahad', portal: 'Global DEW Precipitation Outlook 2026', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 19, pc: 58, user: 'Junaid Aziz Khan', portal: 'Coastal Risk Screening Tool', desc: '', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
