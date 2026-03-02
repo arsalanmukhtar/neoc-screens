@@ -89,62 +89,62 @@ body {
 
 /* ─── LIGHT theme ─────────────────────────────────────── */
 [data-theme="light"] {
-    /* Backgrounds */
-    --bg-root: #f0f2f8;
-    --bg-surface: #ffffff;
-    --bg-elevated: #f8f9fc;
-    --bg-card: #ffffff;
-    --bg-input: #f4f5f9;
-    --bg-overlay: rgba(240, 242, 248, 0.90);
+    /* Backgrounds — layered so each level is clearly distinct */
+    --bg-root: #d6dced;          /* slate-blue base; clearly not white */
+    --bg-surface: #e4e9f6;       /* topbar / statusbar */
+    --bg-elevated: #ecf0fa;      /* subgrid panel interiors */
+    --bg-card: #f5f7fd;          /* individual cell cards */
+    --bg-input: #e8ecf7;         /* input fields */
+    --bg-overlay: rgba(214, 220, 237, 0.92);
 
     /* Text */
     --text-primary: #1a1f36;
-    --text-secondary: #5a6482;
-    --text-muted: #9aa0b8;
+    --text-secondary: #434c6e;
+    --text-muted: #7a82a0;
     --text-accent: #0d1117;
 
-    /* Borders */
-    --border-subtle: rgba(0, 0, 0, 0.05);
-    --border-mid: rgba(0, 0, 0, 0.09);
-    --border-strong: rgba(0, 0, 0, 0.15);
+    /* Borders — strong enough to show on light backgrounds */
+    --border-subtle: rgba(0, 0, 0, 0.13);
+    --border-mid: rgba(0, 0, 0, 0.20);
+    --border-strong: rgba(0, 0, 0, 0.32);
 
-    /* Grid outer (L1, R1) */
+    /* Grid outer (N1, G1) – Violet/Indigo */
     --c-outer-base: #4f46e5;
-    --c-outer-glow: rgba(79, 70, 229, 0.20);
-    --c-outer-muted: rgba(79, 70, 229, 0.08);
-    --c-outer-text: #4f46e5;
-    --c-outer-cell: rgba(79, 70, 229, 0.07);
-    --c-outer-hover: rgba(79, 70, 229, 0.15);
+    --c-outer-glow: rgba(79, 70, 229, 0.30);
+    --c-outer-muted: rgba(79, 70, 229, 0.15);
+    --c-outer-text: #4338ca;
+    --c-outer-cell: rgba(79, 70, 229, 0.14);
+    --c-outer-hover: rgba(79, 70, 229, 0.24);
 
-    /* Grid inner (L2, R2) */
+    /* Grid inner (N2, G2) – Amber/Gold */
     --c-inner-base: #d97706;
-    --c-inner-glow: rgba(217, 119, 6, 0.18);
-    --c-inner-muted: rgba(217, 119, 6, 0.07);
-    --c-inner-text: #b45309;
-    --c-inner-cell: rgba(217, 119, 6, 0.07);
-    --c-inner-hover: rgba(217, 119, 6, 0.14);
+    --c-inner-glow: rgba(217, 119, 6, 0.30);
+    --c-inner-muted: rgba(217, 119, 6, 0.15);
+    --c-inner-text: #92400e;
+    --c-inner-cell: rgba(217, 119, 6, 0.14);
+    --c-inner-hover: rgba(217, 119, 6, 0.24);
 
-    /* Grid middle (M) */
+    /* Grid middle (COP) – Cyan/Teal */
     --c-mid-base: #0891b2;
-    --c-mid-glow: rgba(8, 145, 178, 0.18);
-    --c-mid-muted: rgba(8, 145, 178, 0.07);
+    --c-mid-glow: rgba(8, 145, 178, 0.30);
+    --c-mid-muted: rgba(8, 145, 178, 0.15);
     --c-mid-text: #0e7490;
-    --c-mid-cell: rgba(8, 145, 178, 0.07);
-    --c-mid-hover: rgba(8, 145, 178, 0.14);
+    --c-mid-cell: rgba(8, 145, 178, 0.14);
+    --c-mid-hover: rgba(8, 145, 178, 0.24);
 
     /* Status */
     --c-success: #059669;
     --c-danger: #dc2626;
     --c-warn: #d97706;
 
-    /* Shadows */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.10);
-    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.14);
+    /* Shadows — deeper so panels lift off the background */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.14);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.18);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.24);
 
     /* Scrollbar */
-    --scrollbar-track: #e8eaf2;
-    --scrollbar-thumb: #c5c9dc;
+    --scrollbar-track: #c8cedf;
+    --scrollbar-thumb: #9aa2bc;
 }
 
 /* ─── Typography scale ────────────────────────────────── */

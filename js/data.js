@@ -40,7 +40,7 @@ const GRID_CONFIG = [
         ],
     },
     {
-        id: 'L2', label: 'L2', rows: 4, cols: 4, colorKey: 'inner',
+        id: 'N2', label: 'N2', rows: 4, cols: 4, colorKey: 'inner',
         stations: [
             { id: 1, pc: 49, user: 'Seemal Naeem', portal: 'National Cryosphere Monitoring Platform', desc: 'Real-time flood monitoring and early warning dissemination', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 2, pc: 45, user: 'Umair Afzal', portal: 'National GLOF Watch', desc: 'Drought severity indices and seasonal forecast tracking', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
@@ -61,7 +61,7 @@ const GRID_CONFIG = [
         ],
     },
     {
-        id: 'L1', label: 'L1', rows: 3, cols: 2, colorKey: 'outer',
+        id: 'N1', label: 'N1', rows: 3, cols: 2, colorKey: 'outer',
         stations: [
             { id: 17, pc: 22, user: 'Sajid Ali', portal: 'Accumulated Precipitation', desc: 'Seismic activity monitoring and earthquake early warning system', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 18, pc: 52, user: 'Reserved', portal: 'Sub-Continent Bulk Shear & Anomaly', desc: 'Station reserved for future assignment', portalPort: '', portalPath: '', serverType: '', projectDir: '' },
@@ -81,7 +81,7 @@ function generateCells(gridId, rows, cols, cellLabels, stations) {
         for (let c = 0; c < cols; c++) {
             const stationIdx = c * rows + r;   // column-major: fill each column top→bottom
             const station = stations[stationIdx];
-            const idPrefix = gridId[0] === 'L' ? 'N' : gridId[0]; // G, N, or C
+            const idPrefix = gridId[0] === 'N' ? 'N' : gridId[0]; // G, N, or C
             const portal = {
                 name: station.portal,
                 num: `${idPrefix}-${station.id}`,

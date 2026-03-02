@@ -78,7 +78,7 @@ function renderOverview() {
             div.dataset.gridId = cfg.id;
 
             const pcShort = cell.pcNumber.replace('PC-', '');
-            const prefix = cfg.id[0] === 'L' ? 'N' : cfg.id[0];
+            const prefix = cfg.id[0] === 'N' ? 'N' : cfg.id[0];
             const idLine = cell.stationId != null ? `${prefix}-${cell.stationId}` : '';
             div.innerHTML = idLine
                 ? `<span class="cell-id">${idLine}</span><span class="cell-pc">${pcShort}</span>`

@@ -75,14 +75,14 @@ To **archive** a station (hide from main grid, show in Archive page), add `archi
 
 ```
 ┌──────────┬──────────────────┬───────┬──────────────────┬──────────┐
-│  L1 3×2  │     L2 4×4       │ C 1×2 │     G2 4×4       │  G1 3×2  │
+│  N1 3×2  │     N2 4×4       │ C 1×2 │     G2 4×4       │  G1 3×2  │
 │(National)│   (National)     │ (COP) │    (Global)      │ (Global) │
 └──────────┴──────────────────┴───────┴──────────────────┴──────────┘
 ```
 
 - **G1 / G2** — Global side (prefix `G-`)
 - **COP** — Common Operating Picture (prefix `C-`)
-- **L2 / L1** — National side (prefix `N-`)
+- **N2 / N1** — National side (prefix `N-`)
 
 ---
 
