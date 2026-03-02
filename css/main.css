@@ -1639,3 +1639,223 @@ body {
     border-color: var(--c-warn);
     box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE  (≤ 480 px)
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+    /* dvh keeps layout stable when mobile browser chrome hides/shows */
+    html, body, .dashboard-shell {
+        height: 100dvh;
+    }
+
+    /* ── Topbar: 2-row compact layout ─────────────────── */
+    .topbar {
+        flex-wrap: wrap;
+        padding: var(--sp-2) var(--sp-3);
+        gap: var(--sp-2);
+        row-gap: var(--sp-2);
+    }
+
+    .topbar-brand {
+        flex: 1;
+        gap: var(--sp-2);
+        min-width: 0;
+    }
+
+    .brand-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    .brand-title {
+        font-size: var(--fs-sm);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+        display: none;
+    }
+
+    /* Search drops to second row, full width */
+    .search-wrap {
+        order: 3;
+        flex: 1 1 100%;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .topbar-actions {
+        gap: var(--sp-1);
+        flex-shrink: 0;
+    }
+
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    /* ── Stage: parent scroll for vertical layout ──────── */
+    .stage {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* ── Overview: vertical stack ──────────────────────── */
+    .overview-row {
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        flex: 0 0 auto;
+        height: auto;
+        gap: var(--sp-5);
+        padding: var(--sp-4) var(--sp-3) var(--sp-5);
+    }
+
+    /* Disable desktop shrink-scale animation */
+    .overview-row.carousel-active {
+        transform: none;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: var(--sp-5);
+    }
+
+    /* ── Subgrid: natural-width container ──────────────── */
+    .subgrid-wrap {
+        width: auto;
+        align-items: center;
+    }
+
+    /* Keep glow on focused, but no scale on mobile */
+    .subgrid-wrap.carousel-focused .subgrid-inner {
+        transform: none;
+        box-shadow: 0 0 28px var(--grid-glow), 0 0 0 2px var(--grid-base);
+    }
+
+    /* Dimmed: just fade, no scale */
+    .subgrid-wrap.carousel-dimmed {
+        transform: none;
+        opacity: 0.35;
+    }
+
+    /*
+     * inline-flex makes the container shrink-wrap its content.
+     * This prevents grid-template-columns: repeat(n, 1fr) from
+     * expanding cells to fill the full viewport width — each 1fr
+     * column resolves to the cell's fixed width instead.
+     */
+    .subgrid-inner {
+        display: inline-flex;
+        padding: var(--sp-2);
+    }
+
+    /* ── Grid cells: larger touch targets ─────────────── */
+    .grid-cell,
+    .overview-row.carousel-active .grid-cell {
+        width: 50px;
+        height: 50px;
+        touch-action: manipulation;
+    }
+
+    .cell-id { font-size: 0.65rem; }
+    .cell-pc { font-size: 0.55rem; }
+
+    /* ── Carousel controls ─────────────────────────────── */
+    .carousel-controls {
+        padding: var(--sp-2) var(--sp-4);
+        gap: var(--sp-3);
+    }
+
+    /* ── Carousel panel: flows in document, no translate ─ */
+    .carousel-panel {
+        transform: none;
+        transition: opacity 0.35s ease;
+        flex: 0 0 auto;
+        min-height: 0;
+    }
+
+    .carousel-panel.open {
+        transform: none;
+        max-height: 4000px;  /* large enough; instant since no max-height transition */
+        overflow-y: visible; /* stage handles all scrolling */
+        opacity: 1;
+    }
+
+    .panel-header {
+        padding: var(--sp-3) var(--sp-4);
+    }
+
+    .panel-body {
+        padding: 0 var(--sp-4) var(--sp-6);
+        overflow-y: visible;
+    }
+
+    /* ── Cards: single column, full width ──────────────── */
+    .cards-grid {
+        grid-template-columns: 1fr;
+        gap: var(--sp-3);
+    }
+
+    /* ── Detail modal: bottom sheet ────────────────────── */
+    .detail-modal-backdrop {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .detail-modal-box {
+        width: 100%;
+        max-width: 100%;
+        max-height: 90dvh;
+        border-radius: var(--r-xl) var(--r-xl) 0 0;
+        transform: translateY(60px);
+    }
+
+    .detail-modal-backdrop.open .detail-modal-box {
+        transform: translateY(0);
+    }
+
+    .detail-modal-box::before {
+        border-radius: var(--r-xl) var(--r-xl) 0 0;
+    }
+
+    .detail-modal-header {
+        padding: var(--sp-5) var(--sp-4) var(--sp-3);
+    }
+
+    .detail-modal-body {
+        padding: var(--sp-4) var(--sp-4) var(--sp-8);
+    }
+
+    /* ── Statusbar: compact single row ─────────────────── */
+    .statusbar {
+        padding: var(--sp-1) var(--sp-3);
+        gap: var(--sp-2);
+        font-size: 0.6rem;
+        flex-wrap: nowrap;
+    }
+
+    .status-sep {
+        display: none;
+    }
+
+    /* ── Archive page ───────────────────────────────────── */
+    .archive-page {
+        padding: var(--sp-4) var(--sp-3);
+        gap: var(--sp-3);
+    }
+
+    .archive-title {
+        font-size: var(--fs-xl);
+    }
+
+    .archive-filter-tab {
+        font-size: var(--fs-xs);
+        padding: 3px var(--sp-2);
+        line-height: 1.7;
+    }
+}
