@@ -762,6 +762,12 @@ body {
     min-width: 0;
 }
 
+/* "Read More" inside About section of detail modal — mobile only */
+.about-read-more {
+    display: none;
+    margin-top: var(--sp-3);
+}
+
 /* ─── Description link inside card ───────────────────── */
 .card-desc-link {
     background: none;
@@ -1799,6 +1805,11 @@ body {
     .cards-grid {
         grid-template-columns: 1fr;
         gap: var(--sp-3);
+    }
+
+    /* Show Read More button inside About section on mobile */
+    .about-read-more {
+        display: inline-flex;
     }
 
     /* ── Detail modal: bottom sheet ────────────────────── */

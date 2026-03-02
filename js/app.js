@@ -552,6 +552,15 @@ function openDetailModal(cellId, gridId, colorKey) {
     descBlock.textContent = cell.portalDescription || '—';
     aboutSection.appendChild(descBlock);
 
+    const readMoreBtn = document.createElement('button');
+    readMoreBtn.className = 'card-desc-link about-read-more';
+    readMoreBtn.innerHTML = `Read More <svg viewBox="0 0 12 12" style="width:11px;height:11px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;display:inline-block;vertical-align:middle;"><line x1="2" y1="10" x2="10" y2="2"/><polyline points="5,2 10,2 10,7"/></svg>`;
+    readMoreBtn.addEventListener('click', () => {
+        closeDetailModal();
+        openAboutModal(cell, colorKey, gridId);
+    });
+    aboutSection.appendChild(readMoreBtn);
+
     body.appendChild(aboutSection);
 
     $('detail-modal').classList.add('open');
@@ -559,6 +568,44 @@ function openDetailModal(cellId, gridId, colorKey) {
 
 function closeDetailModal() {
     $('detail-modal').classList.remove('open');
+}
+
+function openAboutModal(cell, colorKey, gridId) {
+    const cv = COLOR_VARS[colorKey] || COLOR_VARS.outer;
+    const box = $('about-modal-box');
+
+    box.style.setProperty('--dm-color',       `var(${cv.base})`);
+    box.style.setProperty('--dm-color-glow',  `var(${cv.glow})`);
+    box.style.setProperty('--dm-color-muted', `var(${cv.muted})`);
+    box.style.setProperty('--dm-color-text',  `var(${cv.text})`);
+
+    $('am-portal-name').textContent = cell.portalName || '—';
+    $('am-grid-label').textContent  = `Subgrid ${gridId}`;
+
+    const body = $('am-body');
+    body.innerHTML = '';
+
+    const heading = document.createElement('div');
+    heading.className = 'detail-section-heading';
+    heading.innerHTML = `
+      <svg viewBox="0 0 14 14" style="width:10px;height:10px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0;">
+        <circle cx="7" cy="7" r="5.5"/>
+        <line x1="7" y1="5" x2="7" y2="9.5"/>
+        <line x1="7" y1="3.5" x2="7" y2="4.2"/>
+      </svg>
+      About`;
+    body.appendChild(heading);
+
+    const descBlock = document.createElement('div');
+    descBlock.className = 'detail-desc-block';
+    descBlock.textContent = cell.portalDescription || '—';
+    body.appendChild(descBlock);
+
+    $('about-modal').classList.add('open');
+}
+
+function closeAboutModal() {
+    $('about-modal').classList.remove('open');
 }
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
@@ -625,6 +672,17 @@ function attachListeners() {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && $('detail-modal').classList.contains('open')) {
             closeDetailModal();
+        }
+    }, true);
+
+    // About modal close
+    $('about-modal-close').addEventListener('click', closeAboutModal);
+    $('about-modal').addEventListener('click', e => {
+        if (e.target === $('about-modal')) closeAboutModal();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && $('about-modal').classList.contains('open')) {
+            closeAboutModal();
         }
     }, true);
     document.addEventListener('keydown', e => {
