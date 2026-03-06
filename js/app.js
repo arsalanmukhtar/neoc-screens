@@ -12,6 +12,18 @@ const state = {
     searchResults: new Set(),
 };
 
+// Tracks which cell is currently open in the detail modal
+let _currentModalCell      = null;
+let _currentModalColorKey  = null;
+let _currentModalGridId    = null;
+
+// ─── EmailJS Config (hardcoded) ───────────────────────────────────────────────
+// Sign up at https://www.emailjs.com — free tier: 200 emails/month
+// Create a Service (Gmail/Outlook), an Email Template, then paste the IDs below.
+const EJS_PUBLIC_KEY = 'Hf7j1r_wnpLPK0CLf';   // Account → API Keys
+const EJS_SERVICE_ID = 'service_c59muoj';            // Email Services tab
+const EJS_TEMPLATE_ID = 'template_vofg9ml';           // Email Templates tab
+
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
@@ -77,9 +89,9 @@ function renderOverview() {
             div.dataset.cellId = cell.id;
             div.dataset.gridId = cfg.id;
 
-            const pcShort = cell.pcNumber.replace('PC-', '');
+            const pcShort = cell.cellLabel || cell.pcNumber.replace('PC-', '');
             const prefix = cfg.id[0] === 'N' ? 'N' : cfg.id[0];
-            const idLine = cell.stationId != null ? `${prefix}-${cell.stationId}` : '';
+            const idLine = !cell.cellLabel && cell.stationId != null ? `${prefix}-${cell.stationId}` : '';
             div.innerHTML = idLine
                 ? `<span class="cell-id">${idLine}</span><span class="cell-pc">${pcShort}</span>`
                 : `<span class="cell-pc">${pcShort}</span>`;
@@ -369,6 +381,10 @@ function openDetailModal(cellId, gridId, colorKey) {
     const cell = (GRID_DATA[gridId] || []).find(c => c.id === cellId);
     if (!cell) return;
 
+    _currentModalCell     = cell;
+    _currentModalColorKey = colorKey;
+    _currentModalGridId   = gridId;
+
     const cv = COLOR_VARS[colorKey] || COLOR_VARS.outer;
     const box = $('detail-modal-box');
 
@@ -608,6 +624,46 @@ function closeAboutModal() {
     $('about-modal').classList.remove('open');
 }
 
+// ─── Send Alert Email ─────────────────────────────────────────────────────────
+async function sendAlertEmail(cell, gridId) {
+    const toEmail = cell.mail;
+    const toName  = cell.user;
+    if (!toEmail) {
+        showToast('⚠️', `No email set for ${cell.pcNumber}`, 'warn');
+        return;
+    }
+    const timestamp = new Date().toLocaleString('en-US', { hour12: false });
+    const alertBtn  = $('dm-alert-btn');
+
+    if (alertBtn) { alertBtn.disabled = true; alertBtn.textContent = 'Sending…'; }
+
+    try {
+        await emailjs.send(
+            EJS_SERVICE_ID,
+            EJS_TEMPLATE_ID,
+            {
+                to_email:   toEmail,
+                to_name:    toName,
+                message:    `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
+                pc_number:  cell.pcNumber,
+                portal:     cell.portalName,
+                subgrid:    gridId,
+                ip_address: cell.ipAddress,
+                timestamp:  timestamp,
+            },
+            EJS_PUBLIC_KEY
+        );
+
+        console.log(`[Alert] SUCCESS | ${toName} <${toEmail}> | ${timestamp}`);
+        showToast('✅', `Alert sent to ${toName}`, 'success');
+    } catch (err) {
+        console.error(`[Alert] FAILED | ${toName} <${toEmail}> | ${timestamp} |`, err);
+        showToast('❌', `Send failed — see console`, 'error');
+    } finally {
+        if (alertBtn) { alertBtn.disabled = false; alertBtn.textContent = 'Send Alert'; }
+    }
+}
+
 // ─── Status bar ───────────────────────────────────────────────────────────────
 function updateStatusBar() {
     const total = GRID_CONFIG.reduce((s, c) => s + c.rows * c.cols, 0);
@@ -711,4 +767,11 @@ function attachListeners() {
     // Restore theme from storage
     const saved = localStorage.getItem('ndma_theme');
     if (saved) applyTheme(saved);
+
+    // Alert button in detail modal — send directly, no modal
+    $('dm-alert-btn').addEventListener('click', () => {
+        if (!_currentModalCell) return;
+        sendAlertEmail(_currentModalCell, _currentModalGridId);
+    });
+
 }

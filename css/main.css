@@ -1405,7 +1405,7 @@ body {
 /* ─── Toast notification ──────────────────────────────── */
 .toast {
     position: fixed;
-    bottom: var(--sp-6);
+    bottom: calc(var(--sp-6) + 18px);
     right: var(--sp-6);
     z-index: 9999;
     background: var(--bg-card);
@@ -1868,5 +1868,185 @@ body {
         font-size: var(--fs-xs);
         padding: 3px var(--sp-2);
         line-height: 1.7;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Alert Button & SendGrid Feature Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Alert button in detail modal header ─────────────── */
+.dm-alert-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-left: auto;
+    margin-right: var(--sp-3);
+    height: 30px;
+    padding: 0 var(--sp-3);
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.30);
+    border-radius: var(--r-md);
+    color: #f87171;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    font-family: var(--font-base);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+    flex-shrink: 0;
+}
+
+.dm-alert-btn:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.55);
+    color: #fca5a5;
+}
+
+[data-theme="light"] .dm-alert-btn {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.25);
+    color: #dc2626;
+}
+
+[data-theme="light"] .dm-alert-btn:hover {
+    background: rgba(220, 38, 38, 0.16);
+    border-color: rgba(220, 38, 38, 0.45);
+}
+
+/* ── Settings & Alert modal box sizing ───────────────── */
+.settings-modal-box,
+.alert-modal-box {
+    max-width: 460px;
+}
+
+/* ── Settings modal body layout ──────────────────────── */
+.settings-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+/* ── Shared: config note ─────────────────────────────── */
+.sg-config-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-normal);
+}
+
+/* ── Field group (label + input) ─────────────────────── */
+.sg-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.sg-field-label {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--ls-wider);
+    color: var(--text-muted);
+}
+
+.sg-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--r-md);
+    padding: var(--sp-2) var(--sp-3);
+    color: var(--text-primary);
+    font-size: var(--fs-sm);
+    font-family: var(--font-base);
+    outline: none;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.sg-input:focus {
+    border-color: var(--c-outer-base);
+    box-shadow: 0 0 0 3px var(--c-outer-muted);
+}
+
+.sg-textarea {
+    resize: vertical;
+    min-height: 90px;
+    line-height: var(--lh-normal);
+}
+
+/* ── Save / Send buttons ─────────────────────────────── */
+.sg-save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    align-self: flex-start;
+    padding: var(--sp-2) var(--sp-5);
+    background: var(--c-outer-base);
+    border: none;
+    border-radius: var(--r-md);
+    color: #fff;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    font-family: var(--font-base);
+    cursor: pointer;
+    transition: opacity var(--t-fast);
+}
+
+.sg-save-btn:hover  { opacity: 0.85; }
+.sg-save-btn:active { opacity: 0.70; }
+.sg-save-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.alert-send-btn {
+    align-self: stretch;
+    width: 100%;
+    padding: var(--sp-3) var(--sp-5);
+    background: #ef4444;
+    font-size: var(--fs-base);
+    border-radius: var(--r-md);
+}
+
+[data-theme="light"] .alert-send-btn { background: #dc2626; }
+
+/* ── Remember email row ──────────────────────────────── */
+.alert-save-email-row {
+    margin-top: calc(-1 * var(--sp-2));
+}
+
+.alert-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.alert-checkbox-label input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--c-outer-base);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ── Security / info note ────────────────────────────── */
+.sg-security-note {
+    margin: 0;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    line-height: var(--lh-normal);
+}
+
+/* ── Mobile: compact alert button ────────────────────── */
+@media (max-width: 480px) {
+    .dm-alert-btn {
+        margin-left: 0;
+        margin-right: 0;
+        font-size: 0.6rem;
+        padding: 0 var(--sp-2);
     }
 }
