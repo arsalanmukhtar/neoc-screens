@@ -298,8 +298,7 @@ function createCellCard(cell, colorKey, animIdx) {
     }).join('');
 
     const descLinkHTML = `
-    <div class="card-field">
-      <span class="card-field-label">Description</span>
+    <div class="card-field card-desc-only">
       <button class="card-desc-link" data-cell-id="${cell.id}" data-grid-id="${getGridIdFromCellId(cell.id)}">
         View Details
         <svg viewBox="0 0 12 12"><line x1="2" y1="10" x2="10" y2="2"/><polyline points="5,2 10,2 10,7"/></svg>
