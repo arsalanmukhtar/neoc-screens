@@ -1,7 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    NEOC Tech (EW) Dashboard – Design Tokens
-   Light palette follows NEW-UI.html; dark palette is a
-   high-contrast counterpart with the same token names.
+   Sober light and dark palettes sharing the same token names.
    ═══════════════════════════════════════════════════════ */
 
 /* ─── Global resets ───────────────────────────────────── */
@@ -40,114 +39,113 @@ svg {
 [data-theme="light"] {
     color-scheme: light;
 
-    /* Surfaces */
-    --background: #e9edf5;       /* page ground */
-    --surface: #f4f6fb;          /* cells, tiles, inset boxes */
+    /* Surfaces — warm neutral greys */
+    --background: #ebeae6;       /* page ground */
+    --surface: #f5f4f1;          /* cells, tiles, inset boxes */
     --elevated: #ffffff;         /* topbar, panels, block frames */
     --card: #ffffff;             /* station cards */
     --input: #ffffff;
-    --muted: #e6ebf5;            /* neutral buttons, chips */
-    --border: #d7deeb;
+    --muted: #e6e5e0;            /* neutral buttons, chips */
+    --border: #d8d6cf;
 
     /* Text */
-    --ink: #141b2e;
-    --ink-soft: #5b657f;
-    --muted-foreground: #6b7693;
+    --ink: #1c1d1f;
+    --ink-soft: #4f5156;
+    --muted-foreground: #5e6066;
 
-    /* Brand / actions */
-    --primary: #4f46e5;
+    /* Brand / actions — deep teal (selection, active controls, links) */
+    --primary: #1f6b66;
     --primary-foreground: #ffffff;
-    --primary-text: #4f46e5;     /* primary used as text/links */
-    --primary-soft: #e3e4fd;
+    --primary-text: #1b605b;     /* primary used as text/links */
+    --primary-soft: #dcebe8;
 
     /* Status */
-    --success: #059669;
-    --success-text: #047857;
-    --danger: #dc2626;
-    --danger-text: #dc2626;
-    --danger-soft: #fde3e3;
-    --warn: #d97706;
-    --warn-text: #b45309;
-    --warn-soft: #fdeecd;
+    --success: #3a7d47;
+    --success-text: #2e6638;
+    --danger: #b3392f;
+    --danger-text: #9c2f27;
+    --danger-soft: #f6e2df;
+    --warn: #a97c2c;
+    --warn-text: #7d5810;
+    --warn-soft: #f6ecd4;
 
-    /* Block families — outer (G1, N1) · inner (G2, N2) · mid (COP)
-       Outer is crimson, deliberately a different hue from --primary (indigo),
-       so a block's identity never looks like the selection highlight. */
-    --outer: #be123c;
-    --outer-soft: #ffe4e6;
-    --outer-text: #9f1239;
-    --inner: #b45309;
-    --inner-soft: #fdf0d5;
-    --inner-text: #92400e;
-    --mid: #0e7490;
-    --mid-soft: #c9f1f8;
-    --mid-text: #0e7490;
+    /* Block families — outer (G1, N1) raspberry · inner (G2, N2) copper · mid (COP) olive.
+       Each hue is kept apart from --primary (teal), --danger (red) and --warn (amber). */
+    --outer: #9e3d66;
+    --outer-soft: #f4e2ea;
+    --outer-text: #7a2e4f;
+    --inner: #98532f;
+    --inner-soft: #f2e4da;
+    --inner-text: #76401f;
+    --mid: #687a2c;
+    --mid-soft: #e9edd8;
+    --mid-text: #4b581c;
 
     /* Server-type badges */
-    --vscode-soft: #dbeafe;
-    --vscode-text: #1d4ed8;
+    --vscode-soft: #e8e7e2;
+    --vscode-text: #3c3e42;
 
     /* Effects */
-    --shadow-sm: 0 1px 2px rgba(20, 27, 46, 0.06);
-    --shadow-md: 0 8px 24px rgba(20, 27, 46, 0.12);
-    --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.25);
-    --scrollbar-thumb: #c3cbdc;
+    --shadow-sm: 0 1px 2px rgba(28, 29, 31, 0.06);
+    --shadow-md: 0 8px 24px rgba(28, 29, 31, 0.12);
+    --focus-ring: 0 0 0 2px rgba(31, 107, 102, 0.28);
+    --scrollbar-thumb: #c9c7c0;
 }
 
 /* ─── DARK theme ──────────────────────────────────────── */
 [data-theme="dark"] {
     color-scheme: dark;
 
-    /* Surfaces — deep navy, each level clearly lifted */
-    --background: #080d19;
-    --surface: #0f1627;
-    --elevated: #131b2e;
-    --card: #172036;
-    --input: #0c1322;
-    --muted: #1d2740;
-    --border: #253150;
+    /* Surfaces — neutral charcoal, each level clearly lifted */
+    --background: #111213;
+    --surface: #17181a;
+    --elevated: #1c1e20;
+    --card: #222427;
+    --input: #141517;
+    --muted: #2a2c2f;
+    --border: #35383c;
 
     /* Text */
-    --ink: #eef2fb;
-    --ink-soft: #aab4cd;
-    --muted-foreground: #8792b0;
+    --ink: #ecebe7;
+    --ink-soft: #b4b2ac;
+    --muted-foreground: #9c9a94;
 
-    /* Brand / actions */
-    --primary: #6366f1;
+    /* Brand / actions — teal */
+    --primary: #2e7c77;
     --primary-foreground: #ffffff;
-    --primary-text: #a5b4fc;
-    --primary-soft: #1f2452;
+    --primary-text: #86c2bb;
+    --primary-soft: #172e2c;
 
     /* Status */
-    --success: #34d399;
-    --success-text: #34d399;
-    --danger: #dc2626;
-    --danger-text: #fca5a5;
-    --danger-soft: #3a1519;
-    --warn: #f59e0b;
-    --warn-text: #fbbf24;
-    --warn-soft: #33240a;
+    --success: #52a867;
+    --success-text: #8fc49a;
+    --danger: #b23a31;
+    --danger-text: #eba69d;
+    --danger-soft: #3a1d1a;
+    --warn: #cda34c;
+    --warn-text: #e2c077;
+    --warn-soft: #332a12;
 
-    /* Block families (outer = crimson, kept apart from the indigo --primary) */
-    --outer: #f43f5e;
-    --outer-soft: #3d1119;
-    --outer-text: #fecdd3;
-    --inner: #f59e0b;
-    --inner-soft: #33250b;
-    --inner-text: #fcd34d;
-    --mid: #22d3ee;
-    --mid-soft: #0b3140;
-    --mid-text: #67e8f9;
+    /* Block families — raspberry · copper · olive */
+    --outer: #bb7392;
+    --outer-soft: #3a202c;
+    --outer-text: #ecc2d3;
+    --inner: #b86f4a;
+    --inner-soft: #372317;
+    --inner-text: #e8b797;
+    --mid: #9bab55;
+    --mid-soft: #272c15;
+    --mid-text: #cad596;
 
     /* Server-type badges */
-    --vscode-soft: #10264a;
-    --vscode-text: #93c5fd;
+    --vscode-soft: #27292c;
+    --vscode-text: #c9c7c1;
 
     /* Effects */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.55);
-    --focus-ring: 0 0 0 3px rgba(165, 180, 252, 0.35);
-    --scrollbar-thumb: #2c3a5c;
+    --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --focus-ring: 0 0 0 2px rgba(134, 194, 187, 0.35);
+    --scrollbar-thumb: #3a3d41;
 }
 
 /* ─── Block color binding ─────────────────────────────── */
