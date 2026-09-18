@@ -8,11 +8,14 @@ const state = {
     view: 'wall',             // 'wall' | 'archive'
     activeIndex: 0,           // focused block (index into GRID_CONFIG)
     selected: null,           // { gridId, cellId } shown in the side panel
-    panelTab: 'overview',     // 'overview' | 'access' | 'about'
+    panelTab: 'overview',     // 'overview' | 'description'
     searchQuery: '',
     blockFilter: '',
     sortBy: 'portal',         // 'portal' | 'pc'
     archiveFilter: 'all',     // 'all' | 'global' | 'national' | 'cop'
+    devQuery: '',             // Developers widget search
+    devId: null,              // developer shown in the widget
+    devPortal: null,          // { devId, portalId } shown in the side panel
 };
 
 // ─── EmailJS Config (hardcoded) ───────────────────────────────────────────────
@@ -43,7 +46,6 @@ const ICONS = {
     'monitor': '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8m-4-4v4"/>',
     'x': '<path d="M18 6 6 18M6 6l12 12"/>',
     'info': '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/>',
-    'terminal': '<path d="m4 17 6-6-6-6m8 14h8"/>',
     'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8m8 4H8m8 4H8"/>',
     'globe': '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>',
     'external-link': '<path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
@@ -51,9 +53,9 @@ const ICONS = {
     'alert-circle': '<circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>',
     'check-circle': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
     'mail': '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
-    'phone': '<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/>',
     'radio': '<path d="M16.247 7.761a6 6 0 0 1 0 8.478m2.828-11.306a10 10 0 0 1 0 14.134m-14.15 0a10 10 0 0 1 0-14.134m2.828 11.306a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/>',
     'clock': '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    'code': '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
 };
 
 // Stroke scales with size so every icon renders at the same visual weight
@@ -96,7 +98,7 @@ function sortCells(cells) {
 
 function matchesQuery(cell, q) {
     if (!q) return true;
-    return [cell.pcNumber, cell.user, cell.ipAddress, cell.portalName,
+    return [cell.pcNumber, cell.user, developerName(cell), cell.ipAddress, cell.portalName,
         cell.portalNumber, cell.cellLabel, cell.portalDescription]
         .join(' ').toLowerCase().includes(q);
 }
@@ -112,17 +114,14 @@ function getSelected() {
 const ACCESS_TYPES = {
     vscode: {
         label: 'VS Code Live Server',
-        start: 'VS Code → Open with Live Server',
-        steps: ['Open the project folder in VS Code', 'Right-click index.html in the Explorer', 'Choose "Open with Live Server"'],
+        steps: ['Open the project folder in VS Code on this PC', 'Right-click index.html in the Explorer', 'Choose "Open with Live Server"'],
     },
     npm: {
         label: 'npm',
-        start: 'npm start (or npm run dev)',
-        steps: ['Open a terminal in the project folder', 'Run npm start (or npm run dev)', 'Open the URL below'],
+        steps: ['Open a terminal in the project folder on this PC', 'Run npm start (or npm run dev)', 'Open the URL below'],
     },
     browser: {
         label: 'Browser',
-        start: 'Open the URL in any browser',
         steps: ['No setup needed on this PC', 'Open the URL below from any PC on the network'],
     },
 };
@@ -139,15 +138,288 @@ function accessInfo(cell) {
                 : 'localhost';
         url = `http://${host}:${port}${path}`;
     }
-    return { type, port, url, ...(ACCESS_TYPES[type] || { label: type || 'Custom', start: '', steps: [] }) };
+    return { type, port, url, ...(ACCESS_TYPES[type] || { label: type || 'Custom', steps: [] }) };
+}
+
+// ─── Developers (config in js/developers.js) ─────────────────────────────────
+const DEV_STATUS = {
+    live: 'Live',
+    development: 'In development',
+    archived: 'Archived',
+};
+
+let DEV = { devs: [], byWall: new Map() };   // built once on load
+
+const slugify = str => String(str).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+// Find a wall station by its portal number ('G-7') or COP label ('GCOP')
+function findWallStation(number) {
+    const key = String(number || '').trim().toUpperCase();
+    if (!key) return null;
+    for (const cfg of GRID_CONFIG) {
+        const cell = GRID_DATA[cfg.id].find(c => displayNumber(c).toUpperCase() === key);
+        if (cell) return { cell, cfg };
+    }
+    return null;
+}
+
+// Merge a configured portal with its wall station (config values win)
+function resolveDevPortal(devId, p, i) {
+    const hit = findWallStation(p.wall);
+    const cell = hit ? hit.cell : null;
+    const access = cell ? accessInfo(cell) : null;
+    return {
+        id: p.id || `${devId}-${i + 1}`,
+        name: p.name || (cell ? cell.portalName : 'Untitled portal'),
+        wall: hit ? displayNumber(cell) : '',
+        cell,
+        gridId: hit ? hit.cfg.id : null,
+        colorKey: hit ? hit.cfg.colorKey : null,
+        status: DEV_STATUS[p.status] ? p.status : (hit ? 'live' : 'development'),
+        description: p.description || (cell && hasDescription(cell) ? cell.portalDescription : ''),
+        stack: p.stack || '',
+        projectDir: p.projectDir || (cell ? cell.projectDir : ''),
+        serverType: p.serverType || (cell ? cell.serverType : ''),
+        port: p.port || (cell ? cell.portalPort : ''),
+        url: p.url || (access ? access.url : ''),
+        updated: p.updated || '',
+    };
+}
+
+function buildDevIndex() {
+    const source = typeof DEVELOPERS !== 'undefined' && Array.isArray(DEVELOPERS) ? DEVELOPERS : [];
+    const devs = source
+        .filter(d => d && d.name)
+        .map(d => {
+            const id = d.id || slugify(d.name);
+            return {
+                id,
+                name: d.name,
+                role: d.role || '',
+                email: d.email || '',
+                portals: (d.portals || []).map((p, i) => resolveDevPortal(id, p, i)),
+            };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    const byWall = new Map();
+    devs.forEach(d => d.portals.forEach(p => { if (p.wall) byWall.set(p.wall, d.name); }));
+    return { devs, byWall };
+}
+
+function findDev(devId) {
+    return DEV.devs.find(d => d.id === devId) || null;
+}
+
+function getDevPortal() {
+    if (!state.devPortal) return null;
+    const dev = findDev(state.devPortal.devId);
+    const portal = dev && dev.portals.find(p => p.id === state.devPortal.portalId);
+    return portal ? { dev, portal } : null;
+}
+
+// A station's developer: its own `developer` field, else the developer config
+function developerName(cell) {
+    return cell.developer || DEV.byWall.get(displayNumber(cell)) || '';
+}
+
+// First and last name initials ("Muhammad Arsalan Mukhtar" → "MM")
+const initials = name => {
+    const words = name.split(/\s+/).filter(Boolean);
+    return (words.length > 1 ? [words[0], words[words.length - 1]] : words).map(w => w[0].toUpperCase()).join('');
+};
+
+const portalMatches = (p, q) =>
+    [p.name, p.wall, p.stack, DEV_STATUS[p.status]].join(' ').toLowerCase().includes(q);
+
+const devNameMatches = (d, q) => [d.name, d.role].join(' ').toLowerCase().includes(q);
+
+const devMatches = (d, q) => !q || devNameMatches(d, q) || d.portals.some(p => portalMatches(p, q));
+
+function renderDevWidget() {
+    const q = state.devQuery;
+    const shown = DEV.devs.filter(d => devMatches(d, q));
+
+    $('dev-count').textContent = q ? `${shown.length} of ${DEV.devs.length}` : `${DEV.devs.length}`;
+
+    if (!DEV.devs.length) {
+        $('dev-list').innerHTML = '';
+        $('dev-portals').innerHTML = `
+            <div class="dev-empty">No developers configured yet. Add them in <code>js/developers.js</code>.</div>`;
+        return;
+    }
+
+    // Keep the selection on a visible developer
+    if (!shown.some(d => d.id === state.devId)) state.devId = shown.length ? shown[0].id : null;
+
+    $('dev-list').innerHTML = shown.map(d => {
+        const onWall = d.portals.filter(p => p.wall).length;
+        const active = d.id === state.devId;
+        return `
+        <button class="dev-item${active ? ' is-active' : ''}" type="button" role="option"
+            aria-selected="${active}" data-dev-id="${escHtml(d.id)}" title="${escHtml(d.name)}">
+            <span class="dev-avatar" aria-hidden="true">${escHtml(initials(d.name))}</span>
+            <span class="dev-item-text">
+                <span class="dev-name">${escHtml(d.name)}</span>
+                <span class="dev-meta">${d.portals.length
+                    ? `${d.portals.length} ${d.portals.length === 1 ? 'portal' : 'portals'} · ${onWall} on wall`
+                    : 'No portals yet'}</span>
+            </span>
+        </button>`;
+    }).join('');
+
+    const dev = findDev(state.devId);
+    if (!dev) {
+        $('dev-portals').innerHTML = `<div class="dev-empty">No developer or portal matches “${escHtml(q)}”.</div>`;
+        return;
+    }
+
+    // When the query matched portals (not the developer's name), fade the non-matching ones
+    const fadeMisses = q && !devNameMatches(dev, q);
+    const sel = state.devPortal;
+    const rows = dev.portals.map(p => {
+        const isSel = sel && sel.devId === dev.id && sel.portalId === p.id;
+        const dim = fadeMisses && !portalMatches(p, q);
+        const where = p.wall
+            ? `<span class="dp-where" data-color="${p.colorKey}">${ic('monitor', 12)}${escHtml(p.wall)} · ${escHtml(p.cell.pcNumber)}</span>`
+            : `<span class="dp-where is-off">${ic('monitor', 12)}Not on wall</span>`;
+        const extra = [p.stack && escHtml(p.stack), p.updated && `Updated ${escHtml(p.updated)}`].filter(Boolean);
+        return `
+        <button class="dp-row${isSel ? ' is-selected' : ''}${dim ? ' is-dim' : ''}" type="button"
+            data-dev-id="${escHtml(dev.id)}" data-portal-id="${escHtml(p.id)}">
+            <span class="dp-name">${escHtml(p.name)}</span>
+            <span class="dp-status" data-status="${p.status}">${DEV_STATUS[p.status]}</span>
+            <span class="dp-meta">${where}${extra.map(x => `<span class="dp-sep">·</span><span>${x}</span>`).join('')}</span>
+        </button>`;
+    }).join('');
+
+    const sub = [dev.role, `${dev.portals.length} ${dev.portals.length === 1 ? 'portal' : 'portals'}`]
+        .filter(Boolean).map(escHtml).join(' · ');
+
+    $('dev-portals').innerHTML = `
+        <div class="dev-portals-head">
+            <div class="dev-portals-title">${escHtml(dev.name)}</div>
+            <div class="dev-portals-sub">${sub}</div>
+        </div>
+        <div class="dp-list">${rows || '<div class="dev-empty">No portals added yet — list them in <code>js/developers.js</code>.</div>'}</div>`;
+}
+
+function selectDevPortal(devId, portalId) {
+    state.devPortal = { devId, portalId };
+    state.devId = devId;
+    state.selected = null;
+    refreshSelection();
+    if (window.matchMedia('(max-width: 1080px)').matches) {
+        $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Side panel for a developer's portal — build info rather than live station info
+function renderDevPortalPanel(panel, { dev, portal: p }) {
+    if (p.colorKey) panel.dataset.color = p.colorKey;
+    else panel.removeAttribute('data-color');
+
+    const server = p.serverType || p.port
+        ? `${escHtml((ACCESS_TYPES[p.serverType] || { label: p.serverType || 'Server' }).label)}${p.port ? ` · Port ${escHtml(p.port)}` : ''}`
+        : '';
+    const details = [
+        p.stack && kv('Stack', escHtml(p.stack)),
+        p.projectDir && kv('Folder', escHtml(p.projectDir)),
+        server && kv('Server', `<span class="type-badge" data-type="${escHtml(p.serverType)}">${server}</span>`),
+        p.updated && kv('Updated', escHtml(p.updated)),
+    ].filter(Boolean).join('');
+    const url = p.url ? `
+        <a class="url-box" href="${escHtml(p.url)}" target="_blank" rel="noopener">
+            ${ic('globe', 14)}<span>${escHtml(p.url.replace(/^https?:\/\//, ''))}</span>${ic('external-link', 13)}
+        </a>` : '';
+
+    const wall = p.wall
+        ? `
+        <div class="inset">
+            ${kv('Position', `Portal ${escHtml(p.wall)} · Subgrid ${escHtml(p.gridId)}`)}
+            ${kv('Station', `${escHtml(p.cell.pcNumber)} · ${escHtml(p.cell.ipAddress)}`)}
+            ${kv('Operator', escHtml(p.cell.user || '—'))}
+            <button class="link-btn" type="button" data-show-wall="${escHtml(p.gridId)}|${escHtml(p.cell.id)}">
+                Show on wall ${ic('arrow-right', 14)}
+            </button>
+        </div>`
+        : `<div class="note">${ic('monitor', 13)}This portal is not on the screen wall.</div>`;
+
+    const others = dev.portals.filter(o => o.id !== p.id);
+    const more = others.length ? `
+        <div>
+            <div class="section-label">More by ${escHtml(dev.name)}</div>
+            <div class="chip-list">
+                ${others.map(o => `
+                <button class="chip-btn" type="button" data-dev-id="${escHtml(dev.id)}" data-portal-id="${escHtml(o.id)}">
+                    <span class="chip-dot" data-status="${o.status}"></span>${escHtml(o.name)}
+                </button>`).join('')}
+            </div>
+        </div>` : '';
+
+    const openBtn = p.url
+        ? `<a class="btn btn-primary btn-lg" href="${escHtml(p.url)}" target="_blank" rel="noopener">${ic('external-link', 14)}Open portal</a>`
+        : `<button class="btn btn-primary btn-lg" type="button" disabled title="No URL configured">${ic('external-link', 14)}Open portal</button>`;
+    const mailBtn = dev.email
+        ? `<a class="btn btn-muted btn-lg" href="mailto:${escHtml(dev.email)}">${ic('mail', 14)}Email</a>`
+        : `<button class="btn btn-muted btn-lg" type="button" disabled title="No email on file for this developer">${ic('mail', 14)}Email</button>`;
+
+    panel.innerHTML = `
+    <div class="panel-head">
+        <div class="panel-icon">${ic('code', 18)}</div>
+        <div class="panel-heading">
+            <div class="panel-title">${escHtml(p.name)}</div>
+            <div class="panel-sub">Developed by ${escHtml(dev.name)}</div>
+        </div>
+        <button id="panel-close" class="icon-btn icon-btn-sm" type="button" aria-label="Clear selection" title="Clear selection (Esc)">${ic('x', 14)}</button>
+    </div>
+    <div class="panel-body">
+        <div class="tiles">
+            <div class="tile">
+                <div class="tile-label">Developer</div>
+                <div class="tile-value" title="${escHtml(dev.name)}">${escHtml(dev.name)}</div>
+                <div class="tile-meta" title="${escHtml(dev.email || dev.role)}">${escHtml(dev.email || dev.role || 'No contact on file')}</div>
+            </div>
+            <div class="tile">
+                <div class="tile-label">Status</div>
+                <div class="tile-value"><span class="dp-status" data-status="${p.status}">${DEV_STATUS[p.status]}</span></div>
+                <div class="tile-meta">${p.updated ? `Updated ${escHtml(p.updated)}` : 'No update date'}</div>
+            </div>
+        </div>
+        <div>
+            <div class="section-label">Description</div>
+            <div class="about-box">
+                ${p.description
+                    ? `<div class="about-text">${escHtml(p.description)}</div>`
+                    : '<div class="about-text is-empty">No description added yet.</div>'}
+            </div>
+        </div>
+        <div>
+            <div class="section-label">Build details</div>
+            ${details || url
+                ? `<div class="inset">${details}${url}</div>`
+                : `<div class="note">${ic('info', 13)}No build details recorded for this portal.</div>`}
+        </div>
+        <div>
+            <div class="section-label">Screen wall</div>
+            ${wall}
+        </div>
+        ${more}
+    </div>
+    <div class="panel-foot">
+        ${openBtn}
+        ${mailBtn}
+    </div>`;
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     applyTheme(document.documentElement.getAttribute('data-theme') || 'light', false);
     hydrateIcons();
+    DEV = buildDevIndex();
+    state.devId = DEV.devs.length ? DEV.devs[0].id : null;
     renderWall();
     renderBrowser();
+    renderDevWidget();
     renderPanel();
     renderStatusBar();
     attachListeners();
@@ -279,7 +551,8 @@ function cardHTML(cell, cfg) {
     const sel = state.selected;
     const isSel = sel && sel.cellId === cell.id;
     const fields = [
-        ['User', cell.user],
+        ['Operator', cell.user],
+        ['Developer', developerName(cell)],
         ['IP Addr', cell.ipAddress],
         ['Portal', cell.portalName],
     ];
@@ -332,6 +605,7 @@ function renderArchive() {
 // ─── Selection & side panel ───────────────────────────────────────────────────
 function selectCell(gridId, cellId) {
     state.selected = { gridId, cellId };
+    state.devPortal = null;
     const idx = cfgIndex(gridId);
     const cell = findCell(gridId, cellId);
     // Jump the browser to the station's block (archived stations stay in the archive list)
@@ -349,24 +623,30 @@ function selectCell(gridId, cellId) {
 
 function clearSelection() {
     state.selected = null;
+    state.devPortal = null;
     refreshSelection();
 }
 
 function refreshSelection() {
     renderPanel();
     renderBrowser();
+    renderDevWidget();
     updateWallState();
     if (state.view === 'archive') renderArchive();
 }
 
 const PANEL_TABS = [
     { id: 'overview', label: 'Overview', icon: 'info' },
-    { id: 'access', label: 'Access', icon: 'terminal' },
-    { id: 'about', label: 'About', icon: 'file-text' },
+    { id: 'description', label: 'Description', icon: 'file-text' },
 ];
 
 function renderPanel() {
     const panel = $('panel');
+    const devSel = getDevPortal();
+    if (devSel) {
+        renderDevPortalPanel(panel, devSel);
+        return;
+    }
     const sel = getSelected();
 
     if (!sel) {
@@ -375,7 +655,7 @@ function renderPanel() {
         <div class="panel-empty">
             <div class="panel-empty-icon">${ic('monitor', 22)}</div>
             <div class="panel-empty-title">No station selected</div>
-            <p>Click a cell on the wall or a card below to see its operator, network and portal access here.</p>
+            <p>Click a cell on the wall, a card below, or a developer's portal to see its details here.</p>
         </div>`;
         return;
     }
@@ -387,9 +667,7 @@ function renderPanel() {
         <button class="panel-tab${t.id === state.panelTab ? ' is-active' : ''}" type="button" role="tab"
             data-tab="${t.id}" aria-selected="${t.id === state.panelTab}">${ic(t.icon, 14)}${t.label}</button>`).join('');
 
-    const body = state.panelTab === 'access' ? panelAccessTab(cell)
-        : state.panelTab === 'about' ? panelAboutTab(cell, cfg)
-            : panelOverviewTab(cell);
+    const body = state.panelTab === 'description' ? panelDescriptionTab(cell) : panelOverviewTab(cell);
 
     const alertAttrs = cell.mail ? '' : 'disabled title="No email on file for this operator"';
 
@@ -398,7 +676,10 @@ function renderPanel() {
         <div class="panel-icon">${ic('monitor', 18)}</div>
         <div class="panel-heading">
             <div class="panel-title">${escHtml(cell.pcNumber)}</div>
-            <div class="panel-sub">Subgrid ${cfg.label} · Portal ${escHtml(displayNumber(cell))}</div>
+            <div class="panel-tags">
+                <span class="panel-tag is-block"><span class="panel-tag-dot"></span>Subgrid ${cfg.label}</span>
+                <span class="panel-tag"><span class="panel-tag-key">Portal</span>${escHtml(displayNumber(cell))}</span>
+            </div>
         </div>
         <button id="panel-close" class="icon-btn icon-btn-sm" type="button" aria-label="Clear selection" title="Clear selection (Esc)">${ic('x', 14)}</button>
     </div>
@@ -406,55 +687,56 @@ function renderPanel() {
     <div class="panel-body" role="tabpanel">${body}</div>
     <div class="panel-foot">
         <button id="panel-alert" class="btn btn-danger btn-lg" type="button" ${alertAttrs}>${ic('mail', 15)}Send Alert</button>
-        <button id="panel-recall" class="btn btn-muted btn-lg" type="button">${ic('phone', 14)}Recall</button>
     </div>`;
+}
+
+// One labelled row: label on the left, value (+ optional meta text / extra HTML) on the right
+function infoRow(label, value, meta, extraHTML = '') {
+    return `
+    <div class="info-row">
+        <div class="info-row-label">${label}</div>
+        <div class="info-row-body">
+            <div class="info-row-value" title="${escHtml(value)}">${escHtml(value || '—')}</div>
+            ${meta ? `<div class="info-row-meta" title="${escHtml(meta)}">${escHtml(meta)}</div>` : ''}
+            ${extraHTML}
+        </div>
+    </div>`;
+}
+
+function serverBadge(access) {
+    if (!access) return '';
+    const text = `${escHtml(access.label)}${access.port ? ` · Port ${escHtml(access.port)}` : ''}`;
+    return `<span class="type-badge" data-type="${escHtml(access.type)}">${text}</span>`;
 }
 
 function panelOverviewTab(cell) {
-    const access = accessInfo(cell);
     return `
-    <div class="tiles">
-        <div class="tile">
-            <div class="tile-label">Operator</div>
-            <div class="tile-value" title="${escHtml(cell.user)}">${escHtml(cell.user || '—')}</div>
-            <div class="tile-meta" title="${escHtml(cell.mail)}">${escHtml(cell.mail || 'No email on file')}</div>
-        </div>
-        <div class="tile">
-            <div class="tile-label">Network</div>
-            <div class="tile-value">${escHtml(cell.ipAddress || '—')}</div>
-            <div class="tile-meta">${access && access.port ? `Port ${escHtml(access.port)}` : 'No port configured'}</div>
-        </div>
+    <div class="info-rows">
+        ${infoRow('Operator', cell.user, cell.mail || 'No email on file')}
+        ${infoRow('Network', cell.ipAddress, '', serverBadge(accessInfo(cell)))}
     </div>
     <div>
         <div class="section-label">Portal access</div>
-        ${accessSection(cell, false)}
-    </div>
-    ${aboutSection(cell, true)}`;
-}
-
-function panelAccessTab(cell) {
-    return `
-    <div>
-        <div class="section-label">Portal access</div>
-        ${accessSection(cell, true)}
+        ${accessSection(cell)}
     </div>`;
 }
 
-function panelAboutTab(cell, cfg) {
-    return `
-    ${aboutSection(cell, false)}
-    <div class="inset">
-        ${kv('Portal no.', escHtml(displayNumber(cell)))}
-        ${kv('Subgrid', `${cfg.label} · ${cfg.rows}×${cfg.cols}`)}
-        ${kv('Position', `Row ${cell.row + 1} · Col ${cell.col + 1}`)}
-    </div>`;
+function panelDescriptionTab(cell) {
+    return hasDescription(cell)
+        ? `<div class="about-box is-fill"><div class="about-text">${escHtml(cell.portalDescription)}</div></div>`
+        : `<div class="about-box is-fill"><div class="about-text is-empty">No description added yet.</div></div>`;
+}
+
+// Label above its content (access box)
+function field(label, contentHTML) {
+    return `<div class="field"><div class="field-label">${label}</div>${contentHTML}</div>`;
 }
 
 function kv(key, valueHTML) {
     return `<div class="kv"><span class="kv-key">${key}</span><span class="kv-val">${valueHTML}</span></div>`;
 }
 
-function accessSection(cell, detailed) {
+function accessSection(cell) {
     const access = accessInfo(cell);
     if (!access) {
         return `
@@ -464,43 +746,21 @@ function accessSection(cell, detailed) {
         </div>`;
     }
 
-    const badge = `${escHtml(access.label)}${access.port ? ` · Port ${escHtml(access.port)}` : ''}`;
-    const folder = cell.projectDir && access.type !== 'browser' ? kv('Folder', escHtml(cell.projectDir)) : '';
-    const start = detailed && access.steps.length
-        ? kv('Start', `<ol class="steps">${access.steps.map(s => `<li>${escHtml(s)}</li>`).join('')}</ol>`)
-        : access.start ? kv('Start', escHtml(access.start)) : '';
+    const folder = cell.projectDir && access.type !== 'browser'
+        ? field('Folder', `<div class="field-val">${escHtml(cell.projectDir)}</div>`) : '';
+    const steps = access.steps.length
+        ? field('Steps', `<ol class="steps">${access.steps.map(s => `<li>${escHtml(s)}</li>`).join('')}</ol>`)
+        : '';
     const url = access.url ? `
         <a class="url-box" href="${escHtml(access.url)}" target="_blank" rel="noopener">
             ${ic('globe', 14)}<span>${escHtml(access.url.replace(/^https?:\/\//, ''))}</span>${ic('external-link', 13)}
         </a>` : '';
-    const where = access.type === 'browser'
-        ? 'Reachable from any PC on the network'
-        : `Runs locally on ${escHtml(cell.pcNumber)} · ${escHtml(cell.ipAddress)}`;
 
     return `
     <div class="inset">
-        <span class="type-badge" data-type="${escHtml(access.type)}">${badge}</span>
         ${folder}
-        ${start}
+        ${steps}
         ${url}
-        <div class="note">${ic('monitor', 13)}${where}</div>
-    </div>`;
-}
-
-function aboutSection(cell, compact) {
-    const desc = hasDescription(cell);
-    const long = desc && cell.portalDescription.length > 160;
-    const text = desc
-        ? `<div class="about-text${compact ? ' is-clamped' : ''}">${escHtml(cell.portalDescription)}</div>`
-        : `<div class="about-text is-empty">No description added yet.</div>`;
-    return `
-    <div>
-        <div class="section-label">About this portal</div>
-        <div class="about-box">
-            <div class="about-title">${escHtml(cell.portalName)}</div>
-            ${text}
-        </div>
-        ${compact && long ? `<button class="link-btn" type="button" data-goto-tab="about" style="margin-top: var(--sp-2)">Read more ${ic('arrow-right', 14)}</button>` : ''}
     </div>`;
 }
 
@@ -696,11 +956,39 @@ function attachListeners() {
     });
     $('archive-search').addEventListener('input', renderArchive);
 
+    // Developers widget
+    $('dev-search').addEventListener('input', e => {
+        state.devQuery = e.target.value.trim().toLowerCase();
+        renderDevWidget();
+    });
+    $('dev-list').addEventListener('click', e => {
+        const item = e.target.closest('.dev-item');
+        if (!item) return;
+        state.devId = item.dataset.devId;
+        renderDevWidget();
+    });
+    $('dev-portals').addEventListener('click', e => {
+        const row = e.target.closest('.dp-row');
+        if (row) selectDevPortal(row.dataset.devId, row.dataset.portalId);
+    });
+
     // Side panel (re-rendered, so delegate)
     $('panel').addEventListener('click', e => {
-        const tab = e.target.closest('[data-tab], [data-goto-tab]');
+        const devChip = e.target.closest('[data-portal-id]');
+        if (devChip) {
+            selectDevPortal(devChip.dataset.devId, devChip.dataset.portalId);
+            return;
+        }
+        const showWall = e.target.closest('[data-show-wall]');
+        if (showWall) {
+            const [gridId, cellId] = showWall.dataset.showWall.split('|');
+            if (state.view !== 'wall') setView('wall');
+            selectCell(gridId, cellId);
+            return;
+        }
+        const tab = e.target.closest('[data-tab]');
         if (tab) {
-            state.panelTab = tab.dataset.tab || tab.dataset.gotoTab;
+            state.panelTab = tab.dataset.tab;
             renderPanel();
             return;
         }
@@ -711,10 +999,6 @@ function attachListeners() {
         if (e.target.closest('#panel-alert')) {
             const sel = getSelected();
             if (sel) sendAlertEmail(sel.cell, sel.cfg.id);
-            return;
-        }
-        if (e.target.closest('#panel-recall')) {
-            showToast('info', 'Recall is not set up yet — use Send Alert to email the operator');
         }
     });
 
@@ -726,7 +1010,7 @@ function attachListeners() {
                 e.target.value = '';
                 e.target.dispatchEvent(new Event('input'));
                 e.target.blur();
-            } else if (state.selected) {
+            } else if (state.selected || state.devPortal) {
                 clearSelection();
             }
             return;

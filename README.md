@@ -48,6 +48,7 @@ neoc-screens/
 │   └── main.css      ← All component styles
 └── js/
     ├── data.js       ← Grid config, station data (edit here to update content)
+    ├── developers.js ← Developers and the portals they built (Developers widget)
     └── app.js        ← All application logic
 ```
 
@@ -63,7 +64,8 @@ Each station supports these fields:
 {
     id: 1,                       // portal number within the side → shown as G-1, N-5, …
     pc: 13,                      // shown as PC-13
-    user: 'Name',
+    user: 'Name',                // operator, shown as "Operator"
+    developer: 'Name',           // portal developer, shown as "Developer" (optional)
     mail: 'name@example.com',    // recipient for "Send Alert" (optional)
     ip: '1.112',                 // last two octets → 172.18.1.112
     portal: 'Portal Name',
@@ -82,6 +84,29 @@ To **archive** a station (hide from main grid, show in Archive page), add `archi
 ```js
 { id: 5, pc: 3, user: 'Name', portal: 'Portal Name', archived: true }
 ```
+
+---
+
+## Developers
+
+The **Developers** widget beside the screen wall lists each developer and the portals they built — including portals that are not on the wall. Selecting a portal opens its build details in the side panel.
+
+Edit `DEVELOPERS` in [js/developers.js](js/developers.js). The widget lists developers alphabetically; add each one's portals like this:
+
+```js
+{
+    name: 'Full Name',
+    role: 'GIS Developer',            // optional
+    email: 'name@example.com',        // optional — enables "Email"
+    portals: [
+        { wall: 'G-7', stack: 'Node.js · React', updated: '2026-07' },   // on the wall: details come from data.js
+        { name: 'Off-wall Portal', status: 'development',                // not on the wall
+          description: '…', stack: '…', projectDir: 'D:\\Portals\\X', url: '', updated: '2026-09' },
+    ],
+}
+```
+
+`status` is `live`, `development` or `archived`. A wall station's **Developer** on its card is taken from here unless the station sets `developer` in `data.js`.
 
 ---
 
