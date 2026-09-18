@@ -223,6 +223,22 @@
 
     </div>
 
+    <!-- ═══ INCOMING ALERT (desktop alert received on this PC) ══════════════ -->
+    <div id="alert-overlay" class="alert-overlay" role="alertdialog" aria-modal="true"
+        aria-labelledby="alert-title" aria-describedby="alert-body" hidden>
+        <div class="alert-card">
+            <div class="alert-pulse" aria-hidden="true">
+                <span class="alert-ring"></span>
+                <span class="alert-ring"></span>
+                <span class="alert-icon" data-icon="bell" data-size="30"></span>
+            </div>
+            <div id="alert-title" class="alert-title">NEOC alert</div>
+            <p id="alert-body" class="alert-body"></p>
+            <div id="alert-time" class="alert-time"></div>
+            <button id="alert-ack" class="btn btn-danger btn-lg alert-ack" type="button">Acknowledge</button>
+        </div>
+    </div>
+
     <!-- ═══ TOAST ════════════════════════════════════════════════════════════ -->
     <div id="toast" class="toast" role="status" aria-live="polite">
         <span id="toast-icon" class="toast-icon"></span>

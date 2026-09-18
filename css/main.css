@@ -1772,6 +1772,124 @@ code {
 .toast.error { --toast-accent: var(--toast-error); }
 .toast.warn { --toast-accent: var(--toast-warn); }
 
+/* ─── Incoming alert overlay ──────────────────────────── */
+.alert-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-4);
+    background: rgba(10, 10, 12, 0.6);
+    backdrop-filter: blur(3px);
+    animation: alert-edge 1.6s ease-in-out infinite;
+}
+
+/* Red glow pulsing around the screen edge */
+@keyframes alert-edge {
+    0%, 100% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
+    50% { box-shadow: inset 0 0 90px 14px rgba(220, 38, 38, 0.55); }
+}
+
+.alert-card {
+    width: min(420px, 100%);
+    padding: var(--sp-8) var(--sp-6) var(--sp-6);
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(220, 38, 38, 0.35);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+.alert-pulse {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    margin-bottom: var(--sp-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alert-icon {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    border-radius: var(--r-full);
+    background: #dc2626;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    animation: alert-beat 1.6s ease-in-out infinite;
+}
+
+.alert-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-full);
+    background: #dc2626;
+    opacity: 0;
+    animation: alert-ring 1.6s ease-out infinite;
+}
+
+.alert-ring + .alert-ring {
+    animation-delay: 0.8s;
+}
+
+@keyframes alert-ring {
+    0% { transform: scale(1); opacity: 0.55; }
+    100% { transform: scale(2.3); opacity: 0; }
+}
+
+@keyframes alert-beat {
+    0%, 100% { transform: scale(1); }
+    15% { transform: scale(1.08); }
+    30% { transform: scale(1); }
+}
+
+.alert-title {
+    font-family: var(--font-head);
+    font-size: 1.375rem;
+    font-weight: var(--fw-bold);
+    color: var(--ink);
+}
+
+.alert-body {
+    text-wrap: balance;
+    font-size: var(--fs-base);
+    line-height: var(--lh-relaxed);
+    color: var(--ink-soft);
+}
+
+.alert-time {
+    font-size: var(--fs-xs);
+    color: var(--muted-foreground);
+}
+
+.alert-ack {
+    margin-top: var(--sp-4);
+    min-width: 180px;
+}
+
+/* No pulsing for people who turn off animations */
+@media (prefers-reduced-motion: reduce) {
+    .alert-overlay,
+    .alert-icon,
+    .alert-ring {
+        animation: none;
+    }
+
+    .alert-overlay {
+        box-shadow: inset 0 0 0 6px rgba(220, 38, 38, 0.7);
+    }
+}
+
 /* Loading spinner (Send Alert while sending) */
 .spinner {
     width: 15px;

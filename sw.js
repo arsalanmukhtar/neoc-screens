@@ -3,7 +3,7 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v2';
+const CACHE = 'neoc-cd-v3';
 const SHELL = [
     './',
     'index.html',
@@ -58,23 +58,46 @@ self.addEventListener('push', event => {
     } catch (e) {
         data = { body: event.data ? event.data.text() : '' };
     }
-    event.waitUntil(self.registration.showNotification(data.title || 'NEOC alert', {
+    const alert = {
+        type: 'neoc-alert',
+        title: data.title || 'NEOC alert',
         body: data.body || '',
-        tag: data.tag || 'neoc-alert',
-        renotify: true,
-        requireInteraction: true,
-        icon: 'icons/icon-192.png',
-        badge: 'icons/icon-192.png',
-    }));
+        stationId: data.stationId || '',
+        at: data.at || new Date().toISOString(),
+    };
+    event.waitUntil(Promise.all([
+        self.registration.showNotification(alert.title, {
+            body: alert.body,
+            tag: data.tag || 'neoc-alert',
+            renotify: true,
+            requireInteraction: true,
+            icon: 'icons/icon-192.png',
+            badge: 'icons/icon-192.png',
+            data: alert,
+        }),
+        // Open dashboard windows show the pulsing alert in the middle of the screen
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(windows => windows.forEach(w => w.postMessage(alert))),
+        // Badge on the installed app's taskbar icon
+        self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null,
+    ]));
 });
 
-// Clicking a notification brings the dashboard window to the front (or opens it)
+// Clicking a notification brings the dashboard to the front (or opens it) with the alert showing
 self.addEventListener('notificationclick', event => {
     event.notification.close();
+    const alert = event.notification.data;
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windows => {
             const open = windows.find(w => 'focus' in w);
-            return open ? open.focus() : self.clients.openWindow('./');
+            if (open) {
+                if (alert) open.postMessage(alert);
+                return open.focus();
+            }
+            const query = alert && alert.stationId
+                ? `?alert=${encodeURIComponent(alert.stationId)}&at=${encodeURIComponent(alert.at)}`
+                : '';
+            return self.clients.openWindow('./' + query);
         })
     );
 });

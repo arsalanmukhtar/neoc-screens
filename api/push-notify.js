@@ -30,6 +30,8 @@ export default async function handler(req, res) {
             body: `You are requested to return to your workstation (${pc}) and resume operations`
                 + (portal ? ` on the ${portal} portal.` : '.'),
             tag: `neoc-alert-${stationId}`,
+            stationId,
+            at: new Date().toISOString(),
         });
 
         const key = stationKey(stationId);

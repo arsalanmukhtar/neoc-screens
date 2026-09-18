@@ -125,7 +125,7 @@ Files: `manifest.webmanifest`, `sw.js` (service worker) and `icons/`.
 
 The side panel has two alert buttons, so each alert goes out on one channel only:
 
-- **Desktop** pushes a Windows notification to the PC registered for that station. It stays on screen until dismissed. The button is greyed out until a PC is registered.
+- **Desktop** pushes a Windows notification to the PC registered for that station. It stays on screen until dismissed. The button is greyed out until a PC is registered. If the dashboard is open on that PC, a pulsing alert also appears in the middle of its window until **Acknowledge** (or Esc) is pressed; the window title blinks and the installed app's taskbar icon gets a badge.
 - **Mail** emails the operator (EmailJS). It is greyed out when the station has no email.
 
 **Register a PC:** on the operator's PC, open the dashboard (or the installed app), select **their own** station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.

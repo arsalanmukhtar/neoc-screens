@@ -472,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStatusBar();
     attachListeners();
     initPwa();
+    initAlertOverlay();
     refreshPushRegistrations();
     tickClock();
     setInterval(tickClock, 1000);
@@ -1233,6 +1234,69 @@ async function onAlertsClick() {
     }
 }
 
+// ─── Incoming alert: pulsing overlay in the middle of the screen ─────────────
+// Shown when a desktop alert arrives for this PC's station (from the service worker),
+// or when the app is opened from the alert's notification.
+const alertOverlay = { count: 0, titleTimer: null, baseTitle: document.title };
+
+function showAlertOverlay(alert) {
+    const overlay = $('alert-overlay');
+    alertOverlay.count = overlay.hidden ? 1 : alertOverlay.count + 1;
+    const when = alert.at ? new Date(alert.at) : new Date();
+    $('alert-title').textContent = alert.title || 'NEOC alert';
+    // Keep "PC-43" on one line (non-breaking hyphen)
+    $('alert-body').textContent = (alert.body || '').replace(/PC-(\S+)/g, 'PC‑$1');
+    $('alert-time').textContent = `Received ${when.toLocaleTimeString('en-US', { hour12: false })}`
+        + (alertOverlay.count > 1 ? ` · ${alertOverlay.count} alerts` : '');
+    overlay.hidden = false;
+    $('alert-ack').focus();
+
+    // Blink the window title so the alert is noticed from the taskbar
+    clearInterval(alertOverlay.titleTimer);
+    let on = false;
+    alertOverlay.titleTimer = setInterval(() => {
+        on = !on;
+        document.title = on ? '⚠ NEOC ALERT' : alertOverlay.baseTitle;
+    }, 1000);
+}
+
+async function acknowledgeAlert() {
+    $('alert-overlay').hidden = true;
+    alertOverlay.count = 0;
+    clearInterval(alertOverlay.titleTimer);
+    document.title = alertOverlay.baseTitle;
+    if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+    // Close the matching Windows notifications too
+    try {
+        const reg = await navigator.serviceWorker?.getRegistration();
+        const open = reg ? await reg.getNotifications() : [];
+        open.filter(n => n.data && n.data.type === 'neoc-alert').forEach(n => n.close());
+    } catch (e) { /* nothing to close */ }
+}
+
+function initAlertOverlay() {
+    $('alert-ack').addEventListener('click', acknowledgeAlert);
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', e => {
+            if (e.data && e.data.type === 'neoc-alert') showAlertOverlay(e.data);
+        });
+    }
+    // Opened from an alert notification: ?alert=GCOP&at=…
+    const params = new URLSearchParams(location.search);
+    const station = params.get('alert');
+    if (station) {
+        const hit = findWallStation(station);
+        showAlertOverlay({
+            title: `NEOC alert · ${station}`,
+            body: hit
+                ? `You are requested to return to your workstation (${hit.cell.pcNumber}) and resume operations on the ${hit.cell.portalName} portal.`
+                : 'You are requested to return to your workstation.',
+            at: params.get('at'),
+        });
+        history.replaceState(null, '', location.pathname);
+    }
+}
+
 // ─── Installable app (service worker + install button) ───────────────────────
 let installPrompt = null;
 
@@ -1408,6 +1472,10 @@ function attachListeners() {
     // Keyboard: ← → move between blocks, Esc clears input / selection
     document.addEventListener('keydown', e => {
         const typing = e.target.matches('input, textarea');
+        if (e.key === 'Escape' && !$('alert-overlay').hidden) {
+            acknowledgeAlert();
+            return;
+        }
         if (e.key === 'Escape') {
             if (typing) {
                 e.target.value = '';
