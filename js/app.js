@@ -806,6 +806,37 @@ function pushRow(cell) {
     </div>`;
 }
 
+// Full-screen helper (Windows tray app) for the PC that receives this station's alerts
+function helperRow(cell) {
+    if (!pushSupported() || !isWindows() || localPushStation() !== displayNumber(cell)) return '';
+    queueMicrotask(updateHelperRow);
+    return `<div id="helper-row" class="info-row">${helperRowInner()}</div>`;
+}
+
+function helperRowInner() {
+    const running = helperState === true;
+    const text = helperState === null ? 'Checking…'
+        : running ? 'Running · alerts cover the whole screen'
+            : 'Not running · alerts only show in the browser';
+    const action = running
+        ? `<button id="helper-test" class="btn btn-sm btn-muted push-btn" type="button"
+            title="Show a full-screen test alert on this PC">${ic('monitor', 13)}Test</button>`
+        : `<a class="btn btn-sm btn-primary push-btn" href="${HELPER_DOWNLOAD}" download
+            title="Windows helper that shows alerts full-screen, on top of all windows">${ic('download', 13)}Download</a>`;
+    return `
+        <div class="info-row-label">Helper</div>
+        <div class="info-row-body">
+            <div class="info-row-meta">${text}</div>
+            ${action}
+        </div>`;
+}
+
+async function updateHelperRow() {
+    await pingHelper();
+    const row = $('helper-row');
+    if (row) row.innerHTML = helperRowInner();
+}
+
 function panelOverviewTab(cell) {
     return `
     <div class="info-rows">
@@ -813,6 +844,7 @@ function panelOverviewTab(cell) {
         ${infoRow('Operator', cell.user, cell.mail || 'No email on file')}
         ${infoRow('Network', cell.ipAddress, '', serverBadge(accessInfo(cell)))}
         ${pushRow(cell)}
+        ${helperRow(cell)}
     </div>
     <div>
         <div class="section-label">Portal access</div>
@@ -1234,6 +1266,48 @@ async function onAlertsClick() {
     }
 }
 
+// ─── Alert helper: Windows tray app that shows alerts full-screen ────────────
+// downloads/NEOC-Alert-Helper.exe (source: helper/). It listens only on this PC (127.0.0.1).
+const HELPER_URL = 'http://127.0.0.1:47800';
+const HELPER_DOWNLOAD = 'downloads/NEOC-Alert-Helper.exe';
+let helperState = null;   // null = not checked yet, true = running, false = not found
+
+const isWindows = () => /Windows/i.test(navigator.userAgent);
+
+async function pingHelper() {
+    try {
+        const res = await fetch(`${HELPER_URL}/ping`, { cache: 'no-store' });
+        helperState = res.ok;
+    } catch (e) {
+        helperState = false;
+    }
+    return helperState;
+}
+
+// text/plain keeps it a simple request; the helper ignores repeats of the same alert
+function sendToHelper(alert) {
+    return fetch(`${HELPER_URL}/alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(alert),
+    }).then(res => res.ok).catch(() => false);
+}
+
+async function testHelper() {
+    const ok = await sendToHelper({
+        title: 'NEOC alert · TEST',
+        body: 'This is a test. Alerts for this PC will look like this. Click Acknowledge to close it.',
+        stationId: 'TEST',
+        at: new Date().toISOString(),
+    });
+    if (!ok) {
+        helperState = false;
+        const row = $('helper-row');
+        if (row) row.innerHTML = helperRowInner();
+        showToast('warn', 'Helper not running — download it and run it on this PC');
+    }
+}
+
 // ─── Incoming alert: pulsing overlay in the middle of the screen ─────────────
 // Shown when a desktop alert arrives for this PC's station (from the service worker),
 // or when the app is opened from the alert's notification.
@@ -1278,7 +1352,10 @@ function initAlertOverlay() {
     $('alert-ack').addEventListener('click', acknowledgeAlert);
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', e => {
-            if (e.data && e.data.type === 'neoc-alert') showAlertOverlay(e.data);
+            if (e.data && e.data.type === 'neoc-alert') {
+                showAlertOverlay(e.data);
+                sendToHelper(e.data);   // full-screen alert (also sent by the service worker)
+            }
         });
     }
     // Opened from an alert notification: ?alert=GCOP&at=…
@@ -1461,6 +1538,10 @@ function attachListeners() {
         if (e.target.closest('#panel-alert-mail')) {
             const sel = getSelected();
             if (sel) sendMailAlert(sel.cell, sel.cfg.id);
+            return;
+        }
+        if (e.target.closest('#helper-test')) {
+            testHelper();
             return;
         }
         if (e.target.closest('#panel-push')) {

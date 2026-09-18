@@ -3,7 +3,7 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v3';
+const CACHE = 'neoc-cd-v4';
 const SHELL = [
     './',
     'index.html',
@@ -80,6 +80,12 @@ self.addEventListener('push', event => {
             .then(windows => windows.forEach(w => w.postMessage(alert))),
         // Badge on the installed app's taskbar icon
         self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null,
+        // Full-screen alert via the NEOC Alert Helper, if it runs on this PC
+        fetch('http://127.0.0.1:47800/alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(alert),
+        }).catch(() => {}),
     ]));
 });
 
