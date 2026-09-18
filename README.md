@@ -69,7 +69,7 @@ Each station supports these fields:
     mail: 'name@example.com',    // recipient for "Send Alert" (optional)
     ip: '1.112',                 // last two octets → 172.18.1.112
     portal: 'Portal Name',
-    desc: 'Description',         // About text; falls back to the portal name
+    desc: '<p>…</p>',            // Description tab — basic HTML allowed (see top of data.js)
     portalPort: '5500',          // Portal Access section (all optional)
     portalPath: 'app/index.html',
     serverType: 'vscode',        // 'vscode' | 'npm' | 'browser' | ''

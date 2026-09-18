@@ -96,10 +96,54 @@ function sortCells(cells) {
     return inPortalOrder(cells);
 }
 
+// ─── Rich text (portal descriptions) ─────────────────────────────────────────
+// Descriptions may contain basic HTML. Only these tags survive; every attribute is
+// dropped except a safe href on links. Unknown tags are unwrapped (their text is kept),
+// dangerous ones are removed with their content.
+const RICH_TAGS = new Set(['P', 'BR', 'H4', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'MARK', 'CODE',
+    'UL', 'OL', 'LI', 'BLOCKQUOTE', 'A']);
+const RICH_DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'SVG', 'MATH']);
+
+function sanitizeNode(node) {
+    [...node.childNodes].forEach(child => {
+        if (child.nodeType === Node.TEXT_NODE) return;
+        if (child.nodeType !== Node.ELEMENT_NODE || RICH_DROP.has(child.tagName)) {
+            child.remove();
+            return;
+        }
+        sanitizeNode(child);
+        if (!RICH_TAGS.has(child.tagName)) {
+            child.replaceWith(...child.childNodes);
+            return;
+        }
+        const href = child.tagName === 'A' ? child.getAttribute('href') || '' : '';
+        [...child.attributes].forEach(a => child.removeAttribute(a.name));
+        if (/^(https?:|mailto:)/i.test(href.trim())) {
+            child.setAttribute('href', href.trim());
+            child.setAttribute('target', '_blank');
+            child.setAttribute('rel', 'noopener');
+        }
+    });
+}
+
+function richText(html) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = String(html ?? '');
+    sanitizeNode(tpl.content);
+    return tpl.innerHTML;
+}
+
+// Text only — for search
+function plainText(html) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = String(html ?? '');
+    return tpl.content.textContent.replace(/\s+/g, ' ').trim();
+}
+
 function matchesQuery(cell, q) {
     if (!q) return true;
     return [cell.pcNumber, cell.user, developerName(cell), cell.ipAddress, cell.portalName,
-        cell.portalNumber, cell.cellLabel, cell.portalDescription]
+        cell.portalNumber, cell.cellLabel, plainText(cell.portalDescription)]
         .join(' ').toLowerCase().includes(q);
 }
 
@@ -389,7 +433,7 @@ function renderDevPortalPanel(panel, { dev, portal: p }) {
             <div class="section-label">Description</div>
             <div class="about-box">
                 ${p.description
-                    ? `<div class="about-text">${escHtml(p.description)}</div>`
+                    ? `<div class="about-text rich-text">${richText(p.description)}</div>`
                     : '<div class="about-text is-empty">No description added yet.</div>'}
             </div>
         </div>
@@ -723,7 +767,7 @@ function panelOverviewTab(cell) {
 
 function panelDescriptionTab(cell) {
     return hasDescription(cell)
-        ? `<div class="about-box is-fill"><div class="about-text">${escHtml(cell.portalDescription)}</div></div>`
+        ? `<div class="about-box is-fill"><div class="about-text rich-text">${richText(cell.portalDescription)}</div></div>`
         : `<div class="about-box is-fill"><div class="about-text is-empty">No description added yet.</div></div>`;
 }
 
