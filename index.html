@@ -1,202 +1,217 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>NEOC Tech (EW) CD</title>
+
+    <!-- Apply saved / system theme before first paint -->
+    <script>
+        (function () {
+            var t = null;
+            try { t = localStorage.getItem('ndma_theme'); } catch (e) { }
+            if (t !== 'light' && t !== 'dark') {
+                t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="css/variables.css" />
     <link rel="stylesheet" href="css/main.css" />
 </head>
 
 <body>
-    <!-- Background grid texture -->
-    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="app">
 
-    <div class="dashboard-shell">
-
-        <!-- ═══ TOPBAR ══════════════════════════════════════════════════════════ -->
+        <!-- ═══ TOPBAR ═══════════════════════════════════════════════════════ -->
         <header class="topbar">
-            <div class="topbar-brand">
-                <div class="brand-icon">N</div>
-                <div>
+            <div class="brand">
+                <div class="brand-mark">N</div>
+                <div class="brand-text">
                     <div class="brand-title">NEOC Tech (EW)</div>
-                    <div class="brand-sub">Control Dashboard</div>
+                    <div class="brand-sub">CONTROL DASHBOARD</div>
                 </div>
             </div>
 
-            <!-- Search -->
-            <div class="search-wrap">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" class="search-input" placeholder="Search by PC, user, IP, portal…"
-                    autocomplete="off" />
+            <div class="topbar-search">
+                <label class="search">
+                    <span data-icon="search" data-size="15"></span>
+                    <input type="text" id="search-input" placeholder="Search by PC, user, IP, portal…"
+                        autocomplete="off" aria-label="Search stations" />
+                    <button id="search-clear" class="search-clear" type="button" aria-label="Clear search"
+                        title="Clear search" hidden>
+                        <span data-icon="x" data-size="13"></span>
+                    </button>
+                </label>
             </div>
 
-            <!-- Actions -->
             <div class="topbar-actions">
-                <button id="btn-theme" class="btn-icon" data-tooltip="Light mode" aria-label="Toggle theme">☀️</button>
-
-                <button id="btn-carousel" class="btn-icon" data-tooltip="Toggle carousel"
-                    aria-label="Toggle carousel view">⊞</button>
-
-                <button id="btn-archive" class="btn-icon" data-tooltip="View archive" aria-label="View archived stations">
-                    <svg viewBox="0 0 16 16" style="width:14px;height:14px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block;">
-                        <rect x="1" y="5" width="14" height="10" rx="1"/>
-                        <path d="M1 5l2-4h10l2 4"/>
-                        <line x1="6" y1="9" x2="10" y2="9"/>
-                    </svg>
+                <button id="btn-theme" class="icon-btn" type="button" aria-label="Toggle theme">
+                    <span id="theme-icon" data-icon="moon"></span>
                 </button>
-
+                <button id="btn-wall" class="icon-btn is-active" type="button" title="Screen wall"
+                    aria-label="Screen wall view">
+                    <span data-icon="layout-grid"></span>
+                </button>
+                <button id="btn-archive" class="icon-btn" type="button" title="Archive" aria-label="Archive view">
+                    <span data-icon="archive"></span>
+                </button>
+                <button id="btn-alerts" class="btn btn-ink" type="button">
+                    <span data-icon="bell" data-size="14"></span>
+                    <span class="btn-label">Alerts</span>
+                </button>
             </div>
         </header>
 
-        <!-- ═══ MAIN STAGE ═══════════════════════════════════════════════════════ -->
-        <main class="stage" id="stage">
+        <div class="workspace">
 
-            <!-- All subgrids overview row -->
-            <div id="overview-row" class="overview-row" role="region" aria-label="Grid overview"></div>
+            <main class="main">
 
-            <!-- Carousel navigation (hidden until carousel opens) -->
-            <div id="carousel-controls" class="carousel-controls" style="display:none;">
-                <button id="carousel-prev" class="carousel-nav-btn" aria-label="Previous subgrid">
-                    <svg viewBox="0 0 14 14">
-                        <polyline points="9,2 4,7 9,12" />
-                    </svg>
-                </button>
-                <div id="carousel-dots" class="carousel-indicators" role="tablist"></div>
-                <button id="carousel-next" class="carousel-nav-btn" aria-label="Next subgrid">
-                    <svg viewBox="0 0 14 14">
-                        <polyline points="5,2 10,7 5,12" />
-                    </svg>
-                </button>
-                <span id="carousel-label" class="carousel-label"></span>
-            </div>
+                <!-- ═══ WALL VIEW ═══════════════════════════════════════════ -->
+                <section id="wall-view" class="view" aria-label="Screen wall">
+                    <div class="overview-row">
 
-            <!-- Carousel detail panel -->
-            <section id="carousel-panel" class="carousel-panel" role="region" aria-label="Cell details">
-                <div class="panel-header">
-                    <span id="panel-title" class="panel-title">Select a subgrid</span>
-                    <span id="panel-meta" class="panel-meta"></span>
-                </div>
-                <div class="panel-body">
-                    <div id="cards-grid" class="cards-grid"></div>
-                </div>
-            </section>
+                        <!-- Wall column: sized to the wall, so the legend ends at N1's edge -->
+                        <div class="wall-col">
+                            <div class="page-head">
+                                <div>
+                                    <h1 class="page-title">Screen wall overview</h1>
+                                    <p id="page-sub" class="page-sub">—</p>
+                                </div>
+                                <div class="legend">
+                                    <span class="legend-chip" data-color="outer"><span class="dot"></span>Outer · G1 / N1</span>
+                                    <span class="legend-chip" data-color="inner"><span class="dot"></span>Inner · G2 / N2</span>
+                                    <span class="legend-chip" data-color="mid"><span class="dot"></span>COP</span>
+                                </div>
+                            </div>
 
-        </main>
+                            <div class="wall-scroll">
+                                <div id="wall" class="wall"></div>
+                            </div>
+                        </div>
 
-        <!-- ═══ ARCHIVE PAGE ════════════════════════════════════════════════════ -->
-        <section id="archive-page" class="archive-page" style="display:none;" role="region" aria-label="Archived stations">
+                        <!-- Reserved container beside the wall — content to be decided -->
+                        <section id="wall-aside" class="wall-aside" aria-label="Reserved">
+                            <div class="wall-aside-head">
+                                <span class="wall-aside-title">Reserved</span>
+                            </div>
+                            <div id="wall-aside-body" class="wall-aside-body">
+                                <div class="wall-aside-empty">
+                                    <span data-icon="layout-grid" data-size="20"></span>
+                                    <p>This space is reserved for an upcoming widget.</p>
+                                </div>
+                            </div>
+                        </section>
 
-            <div class="archive-header">
-                <h2 class="archive-title">Archive</h2>
-                <button id="archive-home-btn" class="btn-icon" data-tooltip="Back to dashboard" aria-label="Return home">
-                    <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block;flex-shrink:0;">
-                        <polyline points="9,2 4,7 9,12"/>
-                    </svg>
-                    Home
-                </button>
-            </div>
+                    </div>
 
-            <div class="archive-filters">
-                <button class="archive-filter-tab active" data-filter="all">All</button>
-                <button class="archive-filter-tab" data-filter="global">Global (G1 / G2)</button>
-                <button class="archive-filter-tab" data-filter="national">National (N1 / N2)</button>
-                <button class="archive-filter-tab" data-filter="cop">COP</button>
-            </div>
+                    <!-- Block browser -->
+                    <section class="browser" aria-label="Stations in focused block">
+                        <div class="browser-head">
+                            <button id="block-prev" class="round-btn" type="button" aria-label="Previous block">
+                                <span data-icon="chevron-left" data-size="15"></span>
+                            </button>
+                            <button id="block-next" class="round-btn" type="button" aria-label="Next block">
+                                <span data-icon="chevron-right" data-size="15"></span>
+                            </button>
+                            <div id="block-dots" class="block-dots" role="tablist" aria-label="Blocks"></div>
+                            <div id="browser-label" class="browser-label"></div>
 
-            <div class="search-wrap" style="max-width:400px;margin:0 0 var(--sp-2) 0;">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="archive-search" class="search-input"
-                    placeholder="Search archived stations…" autocomplete="off" />
-            </div>
+                            <div class="browser-tools">
+                                <label class="field-search">
+                                    <span data-icon="search" data-size="13"></span>
+                                    <input type="text" id="block-filter" placeholder="Filter cards in this block…"
+                                        autocomplete="off" aria-label="Filter cards in this block" />
+                                </label>
+                                <button id="btn-sort" class="btn btn-muted" type="button">
+                                    <span data-icon="sort" data-size="14"></span>
+                                    <!-- Both labels share one grid cell, so the button keeps the width of the longer one -->
+                                    <span id="sort-label" class="sort-label">
+                                        <span data-sort="portal" class="is-active">Sort: Portal</span>
+                                        <span data-sort="pc" aria-hidden="true">Sort: PC</span>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
 
-            <div class="archive-body">
-                <div id="archive-cards-grid" class="cards-grid"></div>
-            </div>
+                        <div id="card-grid" class="card-grid"></div>
+                    </section>
+                </section>
 
-        </section>
+                <!-- ═══ ARCHIVE VIEW ════════════════════════════════════════ -->
+                <section id="archive-view" class="view" aria-label="Archived stations" hidden>
+                    <div class="page-head">
+                        <div>
+                            <h1 class="page-title">Archive</h1>
+                            <p class="page-sub">Stations marked <code>archived: true</code> in data.js — hidden from
+                                the wall.</p>
+                        </div>
+                        <button id="archive-back" class="btn btn-muted" type="button">
+                            <span data-icon="arrow-left" data-size="14"></span>
+                            Back to wall
+                        </button>
+                    </div>
 
-        <!-- ═══ STATUS BAR ═══════════════════════════════════════════════════════ -->
+                    <section class="browser">
+                        <div class="browser-head">
+                            <div id="archive-tabs" class="seg-tabs" role="tablist" aria-label="Archive filter">
+                                <button class="seg-tab is-active" type="button" data-filter="all">All</button>
+                                <button class="seg-tab" type="button" data-filter="global">Global (G1 / G2)</button>
+                                <button class="seg-tab" type="button" data-filter="national">National (N1 / N2)</button>
+                                <button class="seg-tab" type="button" data-filter="cop">COP</button>
+                            </div>
+                            <div class="browser-tools">
+                                <label class="field-search">
+                                    <span data-icon="search" data-size="13"></span>
+                                    <input type="text" id="archive-search" placeholder="Search archived stations…"
+                                        autocomplete="off" aria-label="Search archived stations" />
+                                </label>
+                            </div>
+                        </div>
+                        <div id="archive-grid" class="card-grid"></div>
+                    </section>
+                </section>
+
+            </main>
+
+            <!-- ═══ SIDE PANEL ══════════════════════════════════════════════ -->
+            <aside id="panel" class="panel" aria-label="Station details"></aside>
+
+        </div>
+
+        <!-- ═══ STATUS BAR ═══════════════════════════════════════════════════ -->
         <footer class="statusbar">
-            <div class="status-item">
-                <div class="status-dot"></div>
-                <span>Online</span>
-            </div>
-            <div class="status-sep"></div>
-            <div class="status-item">📡 <span id="status-total">—</span></div>
-            <div class="status-sep"></div>
-            <div class="status-item">🗂️ <span id="status-grids">—</span></div>
-            <div class="status-sep"></div>
-            <div class="status-item" style="margin-left:auto;">
-                🕐 <span id="status-time">—</span>
-            </div>
+            <span class="status-item status-online"><span class="dot"></span>Online</span>
+            <span class="status-item"><span data-icon="radio" data-size="13"></span><span id="status-stations">—</span></span>
+            <span class="status-item"><span data-icon="layout-grid" data-size="13"></span><span id="status-grids">—</span></span>
+            <span id="status-setup-wrap" class="status-item status-warn">
+                <span data-icon="alert-circle" data-size="13"></span><span id="status-setup">—</span>
+            </span>
+            <span id="status-hint" class="status-item status-hint">
+                <span data-icon="pointer" data-size="13"></span>
+                Selection stays in the side panel. Use ← → to move between blocks, Esc clears selection.
+            </span>
+            <span class="status-item status-clock">
+                <span data-icon="clock" data-size="13"></span><span id="status-time">—</span>
+            </span>
+            <button id="open-archive" class="link-btn status-link" type="button">
+                <span id="open-archive-label">Open archive view</span>
+                <span id="open-archive-icon" data-icon="arrow-right" data-size="13"></span>
+            </button>
         </footer>
 
-    </div><!-- /dashboard-shell -->
+    </div>
 
     <!-- ═══ TOAST ════════════════════════════════════════════════════════════ -->
     <div id="toast" class="toast" role="status" aria-live="polite">
-        <span id="toast-icon"></span>
+        <span id="toast-icon" class="toast-icon"></span>
         <span id="toast-msg"></span>
-    </div>
-
-    <!-- ═══ PC DETAIL MODAL ══════════════════════════════════════════════════ -->
-    <div id="detail-modal" class="detail-modal-backdrop" role="dialog" aria-modal="true"
-        aria-labelledby="detail-modal-pc-name">
-        <div class="detail-modal-box" id="detail-modal-box">
-            <div class="detail-modal-header">
-                <div class="detail-modal-pc">
-                    <div class="detail-modal-pc-icon" id="dm-icon">🖥️</div>
-                    <div>
-                        <div class="detail-modal-pc-name" id="dm-pc-name">—</div>
-                        <div class="detail-modal-pc-grid" id="dm-grid-label">—</div>
-                    </div>
-                </div>
-                <button id="dm-alert-btn" class="dm-alert-btn" aria-label="Send email alert">
-                    <svg viewBox="0 0 14 14" style="width:11px;height:11px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block;flex-shrink:0;">
-                        <rect x="1" y="3" width="12" height="8" rx="1.5"/>
-                        <polyline points="1,3 7,8.5 13,3"/>
-                    </svg>
-                    Send Alert
-                </button>
-                <button class="detail-modal-close" id="detail-modal-close" aria-label="Close">
-                    <svg viewBox="0 0 12 12">
-                        <line x1="1" y1="1" x2="11" y2="11" />
-                        <line x1="11" y1="1" x2="1" y2="11" />
-                    </svg>
-                </button>
-            </div>
-
-            <div class="detail-modal-body" id="dm-body">
-                <!-- populated by JS -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ ABOUT MODAL ══════════════════════════════════════ -->
-    <div id="about-modal" class="detail-modal-backdrop" role="dialog" aria-modal="true"
-        aria-labelledby="am-portal-name">
-        <div class="detail-modal-box" id="about-modal-box">
-            <div class="detail-modal-header">
-                <div class="detail-modal-pc">
-                    <div class="detail-modal-pc-icon" id="am-icon">ℹ️</div>
-                    <div>
-                        <div class="detail-modal-pc-name" id="am-portal-name">—</div>
-                        <div class="detail-modal-pc-grid" id="am-grid-label">—</div>
-                    </div>
-                </div>
-                <button class="detail-modal-close" id="about-modal-close" aria-label="Close">
-                    <svg viewBox="0 0 12 12">
-                        <line x1="1" y1="1" x2="11" y2="11" />
-                        <line x1="11" y1="1" x2="1" y2="11" />
-                    </svg>
-                </button>
-            </div>
-            <div class="detail-modal-body" id="am-body">
-                <!-- populated by JS -->
-            </div>
-        </div>
     </div>
 
     <!-- Scripts -->

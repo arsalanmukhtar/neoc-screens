@@ -74,12 +74,14 @@ const GRID_CONFIG = [
 ];
 
 
+// Cells are pushed row by row (the order CSS grid lays them out), but stations
+// fill each column top→bottom, so `order` / the cell id follow station order.
 function generateCells(gridId, rows, cols, cellLabels, stations) {
     const cells = [];
-    let idx = 1;
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const stationIdx = c * rows + r;   // column-major: fill each column top→bottom
+            const order = stationIdx + 1;
             const station = stations[stationIdx];
             const idPrefix = gridId[0] === 'N' ? 'N' : gridId[0]; // G, N, or C
             const portal = {
@@ -87,15 +89,16 @@ function generateCells(gridId, rows, cols, cellLabels, stations) {
                 num: `${idPrefix}-${station.id}`,
                 desc: station.desc || station.portal,
             };
-            const lastOctet = ((gridId.charCodeAt(0) * 10 + idx) % 253) + 1;
+            const lastOctet = ((gridId.charCodeAt(0) * 10 + order) % 253) + 1;
             const ipAddress = station.ip
                 ? `172.18.${station.ip}`
-                : `172.18.${(idx % 5) + 1}.${lastOctet}`;
+                : `172.18.${(order % 5) + 1}.${lastOctet}`;
             const pcNumber  = `PC-${station.pc}`;
             const cellLabel = cellLabels ? cellLabels[stationIdx] : null;
 
             cells.push({
-                id: `${gridId}-${String(idx).padStart(2, '0')}`,
+                id: `${gridId}-${String(order).padStart(2, '0')}`,
+                order,
                 stationId: station.id,
                 pcNumber,
                 cellLabel,
@@ -113,7 +116,6 @@ function generateCells(gridId, rows, cols, cellLabels, stations) {
                 col: c,
                 archived: station.archived || false,
             });
-            idx++;
         }
     }
     return cells;

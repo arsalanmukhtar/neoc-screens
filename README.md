@@ -60,8 +60,22 @@ All station data lives in [js/data.js](js/data.js) inside the `GRID_CONFIG` arra
 Each station supports these fields:
 
 ```js
-{ id: 1, pc: 13, user: 'Name', portal: 'Portal Name', desc: 'Description' }
+{
+    id: 1,                       // portal number within the side → shown as G-1, N-5, …
+    pc: 13,                      // shown as PC-13
+    user: 'Name',
+    mail: 'name@example.com',    // recipient for "Send Alert" (optional)
+    ip: '1.112',                 // last two octets → 172.18.1.112
+    portal: 'Portal Name',
+    desc: 'Description',         // About text; falls back to the portal name
+    portalPort: '5500',          // Portal Access section (all optional)
+    portalPath: 'app/index.html',
+    serverType: 'vscode',        // 'vscode' | 'npm' | 'browser' | ''
+    projectDir: 'D:\\Portals\\App',
+}
 ```
+
+Stations fill each subgrid **column by column, top to bottom**, in array order — so list them in portal-number order (G-1, G-2, …).
 
 To **archive** a station (hide from main grid, show in Archive page), add `archived: true`:
 
@@ -75,13 +89,15 @@ To **archive** a station (hide from main grid, show in Archive page), add `archi
 
 ```
 ┌──────────┬──────────────────┬───────┬──────────────────┬──────────┐
-│  N1 3×2  │     N2 4×4       │ C 1×2 │     G2 4×4       │  G1 3×2  │
-│(National)│   (National)     │ (COP) │    (Global)      │ (Global) │
+│  G1 3×2  │     G2 4×4       │ C 1×2 │     N2 4×4       │  N1 3×2  │
+│ (Global) │    (Global)      │ (COP) │   (National)     │(National)│
+│ G-1…G-6  │   G-7…G-22       │GCOP / │   N-1…N-16       │N-17…N-22 │
+│          │                  │ NCOP  │                  │          │
 └──────────┴──────────────────┴───────┴──────────────────┴──────────┘
 ```
 
 - **G1 / G2** — Global side (prefix `G-`)
-- **COP** — Common Operating Picture (prefix `C-`)
+- **COP** — Common Operating Picture (cells labelled `GCOP` / `NCOP`)
 - **N2 / N1** — National side (prefix `N-`)
 
 ---
@@ -90,12 +106,14 @@ To **archive** a station (hide from main grid, show in Archive page), add `archi
 
 | Feature | Detail |
 |---|---|
-| Overview | All 5 subgrids in a single viewport row |
-| Carousel | Click any subgrid to zoom in, animated detail cards |
-| Navigation | Arrow keys ← → or click dots/arrows to cycle subgrids |
-| Search | Filter by PC, user, IP, portal name/number/description |
-| Dark/Light | Theme toggle, persisted to localStorage |
-| Archive | Stations with `archived: true` in data.js appear on the Archive page |
+| Screen wall | All 5 blocks in one row, drawn to scale; each cell shows portal number + PC |
+| Block browser | Cards for the focused block, with per-block filter and sort (portal / PC) |
+| Side panel | Click any cell or card — Overview / Access / About tabs, no popups |
+| Send Alert | Emails the operator (EmailJS) asking them to return to their workstation |
+| Search | Highlights cells by PC, user, IP, portal name/number/description; Enter selects the first match |
+| Dark/Light | Theme toggle; follows the system theme until changed, then persisted to localStorage |
+| Archive | Stations with `archived: true` in data.js appear in the Archive view |
+| Status bar | Station count, how many have portal access configured / need setup, clock |
 
 ---
 
@@ -103,5 +121,6 @@ To **archive** a station (hide from main grid, show in Archive page), add `archi
 
 | Key | Action |
 |---|---|
-| `←` `→` | Navigate carousel |
-| `Esc` | Close carousel / close modal / clear search |
+| `←` `→` | Move between blocks |
+| `Enter` (in search) | Select the first matching station |
+| `Esc` | Clear the focused input, otherwise clear the selection |

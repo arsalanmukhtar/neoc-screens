@@ -1,21 +1,19 @@
 /* ═══════════════════════════════════════════════════════
-   NDMA Dashboard – Application Logic
+   NEOC Tech (EW) Dashboard – Application Logic
+   Wall overview → block browser → side panel (no popups)
    ═══════════════════════════════════════════════════════ */
 
 // ─── App State ────────────────────────────────────────────────────────────────
 const state = {
-    theme: 'dark',
-    carouselActive: false,
-    archiveOpen: false,
-    activeIndex: 0,
+    view: 'wall',             // 'wall' | 'archive'
+    activeIndex: 0,           // focused block (index into GRID_CONFIG)
+    selected: null,           // { gridId, cellId } shown in the side panel
+    panelTab: 'overview',     // 'overview' | 'access' | 'about'
     searchQuery: '',
-    searchResults: new Set(),
+    blockFilter: '',
+    sortBy: 'portal',         // 'portal' | 'pc'
+    archiveFilter: 'all',     // 'all' | 'global' | 'national' | 'cop'
 };
-
-// Tracks which cell is currently open in the detail modal
-let _currentModalCell      = null;
-let _currentModalColorKey  = null;
-let _currentModalGridId    = null;
 
 // ─── EmailJS Config (hardcoded) ───────────────────────────────────────────────
 // Sign up at https://www.emailjs.com — free tier: 200 emails/month
@@ -28,660 +26,581 @@ const EJS_TEMPLATE_ID = 'template_vofg9ml';           // Email Templates tab
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
+// ─── Icons (Lucide) ───────────────────────────────────────────────────────────
+const ICONS = {
+    'search': '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+    'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    'moon': '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    'layout-grid': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+    'archive': '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-10 4h4"/>',
+    'bell': '<path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+    'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+    'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+    'arrow-left': '<path d="M19 12H5m7 7-7-7 7-7"/>',
+    'arrow-right': '<path d="M5 12h14m-7-7 7 7-7 7"/>',
+    'sort': '<path d="m3 16 4 4 4-4m-4 4V4m4 0h10M11 8h7m-7 4h4"/>',
+    'pointer': '<path d="M14 4.1 12 6M5.1 8l-2.9-.8M6 12l-1.9 2M7.2 2.2 8 5.1"/><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"/>',
+    'monitor': '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8m-4-4v4"/>',
+    'x': '<path d="M18 6 6 18M6 6l12 12"/>',
+    'info': '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/>',
+    'terminal': '<path d="m4 17 6-6-6-6m8 14h8"/>',
+    'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8m8 4H8m8 4H8"/>',
+    'globe': '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>',
+    'external-link': '<path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    'alert-triangle': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01"/>',
+    'alert-circle': '<circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>',
+    'check-circle': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    'mail': '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+    'phone': '<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/>',
+    'radio': '<path d="M16.247 7.761a6 6 0 0 1 0 8.478m2.828-11.306a10 10 0 0 1 0 14.134m-14.15 0a10 10 0 0 1 0-14.134m2.828 11.306a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/>',
+    'clock': '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+};
+
+// Stroke scales with size so every icon renders at the same visual weight
+function svgIcon(name, size = 16) {
+    const sw = (1.75 * 24 / size).toFixed(2);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+}
+
+function ic(name, size = 16) {
+    return `<span data-icon="${name}" data-size="${size}">${svgIcon(name, size)}</span>`;
+}
+
+function hydrateIcons(root = document) {
+    root.querySelectorAll('[data-icon]').forEach(el => {
+        el.innerHTML = svgIcon(el.dataset.icon, Number(el.dataset.size) || 16);
+    });
+}
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+const cfgIndex = gridId => GRID_CONFIG.findIndex(c => c.id === gridId);
+const findCell = (gridId, cellId) => (GRID_DATA[gridId] || []).find(c => c.id === cellId) || null;
+const visibleCells = gridId => GRID_DATA[gridId].filter(c => !c.archived);
+const allVisibleCells = () => GRID_CONFIG.flatMap(cfg => visibleCells(cfg.id));
+const displayNumber = cell => cell.cellLabel || cell.portalNumber;
+const isConfigured = cell => Boolean(cell.portalPort || cell.serverType);
+const hasDescription = cell => Boolean(cell.portalDescription) && cell.portalDescription !== cell.portalName;
+
+// Cells are stored in layout (row-by-row) order; lists should follow portal order (G-1, G-2, …)
+function inPortalOrder(cells) {
+    return [...cells].sort((a, b) => a.order - b.order);
+}
+
+function sortCells(cells) {
+    if (state.sortBy === 'pc') {
+        const pcNum = c => parseInt(c.pcNumber.replace('PC-', ''), 10) || 0;
+        return [...cells].sort((a, b) => pcNum(a) - pcNum(b) || a.order - b.order);
+    }
+    return inPortalOrder(cells);
+}
+
+function matchesQuery(cell, q) {
+    if (!q) return true;
+    return [cell.pcNumber, cell.user, cell.ipAddress, cell.portalName,
+        cell.portalNumber, cell.cellLabel, cell.portalDescription]
+        .join(' ').toLowerCase().includes(q);
+}
+
+function getSelected() {
+    if (!state.selected) return null;
+    const cell = findCell(state.selected.gridId, state.selected.cellId);
+    if (!cell) return null;
+    return { cell, cfg: GRID_CONFIG[cfgIndex(state.selected.gridId)] };
+}
+
+// How a station's portal is started and opened
+const ACCESS_TYPES = {
+    vscode: {
+        label: 'VS Code Live Server',
+        start: 'VS Code → Open with Live Server',
+        steps: ['Open the project folder in VS Code', 'Right-click index.html in the Explorer', 'Choose "Open with Live Server"'],
+    },
+    npm: {
+        label: 'npm',
+        start: 'npm start (or npm run dev)',
+        steps: ['Open a terminal in the project folder', 'Run npm start (or npm run dev)', 'Open the URL below'],
+    },
+    browser: {
+        label: 'Browser',
+        start: 'Open the URL in any browser',
+        steps: ['No setup needed on this PC', 'Open the URL below from any PC on the network'],
+    },
+};
+
+function accessInfo(cell) {
+    if (!isConfigured(cell)) return null;
+    const type = cell.serverType;
+    const port = cell.portalPort;
+    const path = cell.portalPath ? '/' + cell.portalPath.replace(/^\//, '') : '';
+    let url = '';
+    if (port) {
+        const host = type === 'vscode' ? '127.0.0.1'
+            : type === 'browser' && cell.ipAddress ? cell.ipAddress
+                : 'localhost';
+        url = `http://${host}:${port}${path}`;
+    }
+    return { type, port, url, ...(ACCESS_TYPES[type] || { label: type || 'Custom', start: '', steps: [] }) };
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    applyTheme(state.theme);
-    renderOverview();
-    renderCarouselDots();
-    renderCarouselPanel();
+    applyTheme(document.documentElement.getAttribute('data-theme') || 'light', false);
+    hydrateIcons();
+    renderWall();
+    renderBrowser();
+    renderPanel();
+    renderStatusBar();
     attachListeners();
-    updateStatusBar();
+    tickClock();
+    setInterval(tickClock, 1000);
 });
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-function applyTheme(theme) {
-    state.theme = theme;
-    document.documentElement.setAttribute('data-theme', theme);
-    $('btn-theme').innerHTML = theme === 'dark' ? '☀️' : '🌙';
-    $('btn-theme').setAttribute('data-tooltip', theme === 'dark' ? 'Light mode' : 'Dark mode');
-    localStorage.setItem('ndma_theme', theme);
+function applyTheme(theme, persist = true) {
+    const root = document.documentElement;
+    root.classList.add('theme-switching');
+    root.setAttribute('data-theme', theme);
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
+    const btn = $('btn-theme');
+    const next = theme === 'dark' ? 'light' : 'dark';
+    btn.innerHTML = ic(theme === 'dark' ? 'sun' : 'moon');
+    btn.title = `Switch to ${next} mode`;
+    if (persist) {
+        try { localStorage.setItem('ndma_theme', theme); } catch (e) { /* storage unavailable */ }
+    }
 }
 
 function toggleTheme() {
-    applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
-// ─── Render overview grid ─────────────────────────────────────────────────────
-function renderOverview() {
-    const row = $('overview-row');
-    row.innerHTML = '';
-
-    GRID_CONFIG.forEach((cfg, idx) => {
-        const cells = GRID_DATA[cfg.id];
-        const wrap = document.createElement('div');
-        wrap.className = 'subgrid-wrap';
-        wrap.dataset.color = cfg.colorKey;
-        wrap.dataset.gridId = cfg.id;
-        wrap.dataset.index = idx;
-        wrap.setAttribute('data-tooltip', `${cfg.label} — ${cfg.rows}×${cfg.cols}`);
-
-        wrap.innerHTML = `
-      <div class="subgrid-label">
-        <div class="subgrid-label-dot"></div>
-        ${cfg.label}
-        <span style="font-weight:var(--fw-regular);color:var(--text-muted);font-size:var(--fs-xs);letter-spacing:0;">${cfg.rows}×${cfg.cols}</span>
-      </div>
-      <div class="subgrid-inner" id="inner-${cfg.id}">
-        <div class="cell-grid" id="cellgrid-${cfg.id}"
-          style="grid-template-columns: repeat(${cfg.cols}, 1fr);">
-        </div>
-      </div>
-    `;
-
-        row.appendChild(wrap);
-
-        const cellGrid = wrap.querySelector(`#cellgrid-${cfg.id}`);
-        const visibleCells = cells.filter(c => !c.archived);
-        visibleCells.forEach((cell) => {
-            const div = document.createElement('div');
-            div.className = 'grid-cell';
-            div.id = `cell-ov-${cell.id}`;
-            div.dataset.cellId = cell.id;
-            div.dataset.gridId = cfg.id;
-
-            const pcShort = cell.cellLabel || cell.pcNumber.replace('PC-', '');
-            const prefix = cfg.id[0] === 'N' ? 'N' : cfg.id[0];
-            const idLine = !cell.cellLabel && cell.stationId != null ? `${prefix}-${cell.stationId}` : '';
-            div.innerHTML = idLine
-                ? `<span class="cell-id">${idLine}</span><span class="cell-pc">${pcShort}</span>`
-                : `<span class="cell-pc">${pcShort}</span>`;
-
-            div.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openDetailModal(cell.id, cfg.id, cfg.colorKey);
-            });
-
-            cellGrid.appendChild(div);
-        });
-
-        wrap.addEventListener('click', () => openCarouselAt(idx));
-    });
+// ─── Views ────────────────────────────────────────────────────────────────────
+function setView(view) {
+    state.view = view;
+    $('wall-view').hidden = view !== 'wall';
+    $('archive-view').hidden = view !== 'archive';
+    $('btn-wall').classList.toggle('is-active', view === 'wall');
+    $('btn-archive').classList.toggle('is-active', view === 'archive');
+    $('status-hint').hidden = view !== 'wall';
+    $('open-archive-label').textContent = view === 'archive' ? 'Back to wall view' : 'Open archive view';
+    $('open-archive-icon').innerHTML = svgIcon(view === 'archive' ? 'arrow-left' : 'arrow-right', 13);
+    if (view === 'archive') renderArchive();
 }
 
-// ─── Carousel ─────────────────────────────────────────────────────────────────
-function renderCarouselDots() {
-    const container = $('carousel-dots');
-    container.innerHTML = '';
+// ─── Screen wall ──────────────────────────────────────────────────────────────
+function renderWall() {
+    const wall = $('wall');
 
-    GRID_CONFIG.forEach((cfg, idx) => {
-        const dot = document.createElement('div');
-        dot.className = `carousel-dot${idx === state.activeIndex ? ' active' : ''}`;
-        dot.dataset.color = cfg.colorKey;
-        dot.dataset.index = idx;
-        dot.addEventListener('click', () => openCarouselAt(idx));
-        container.appendChild(dot);
-    });
-}
+    wall.innerHTML = GRID_CONFIG.map((cfg, idx) => {
+        const cells = visibleCells(cfg.id).map(cell => `
+            <button class="cell" type="button" data-grid-id="${cfg.id}" data-cell-id="${cell.id}"
+                title="${escHtml(cell.portalName)} — ${escHtml(cell.user)}">
+                <span class="cell-num">${escHtml(displayNumber(cell))}</span>
+                <span class="cell-pc">${escHtml(cell.pcNumber)}</span>
+            </button>`).join('');
 
-function openCarouselAt(idx) {
-    state.carouselActive = true;
-    state.activeIndex = idx;
-
-    $('overview-row').classList.add('carousel-active');
-    $('btn-carousel').classList.add('active');
-    $('btn-carousel').innerHTML = `<svg viewBox="0 0 14 14" style="width:13px;height:13px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block;"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>`;
-    $('btn-carousel').setAttribute('data-tooltip', 'Exit carousel');
-
-    renderCarouselPanel();
-    $('carousel-panel').classList.add('open');
-    $('carousel-controls').style.display = 'flex';
-
-    updateCarouselFocus();
-    updateCarouselLabel();
-}
-
-function closeCarousel() {
-    state.carouselActive = false;
-
-    $('overview-row').classList.remove('carousel-active');
-    $('btn-carousel').classList.remove('active');
-    $('btn-carousel').innerHTML = '⊞';
-    $('btn-carousel').setAttribute('data-tooltip', 'Toggle carousel');
-
-    $('carousel-panel').classList.remove('open');
-    $('carousel-controls').style.display = 'none';
-
-    $$('.subgrid-wrap').forEach(w => {
-        w.classList.remove('carousel-focused', 'carousel-dimmed');
-    });
-}
-
-function toggleCarousel() {
-    if (state.carouselActive) closeCarousel();
-    else openCarouselAt(state.activeIndex);
-}
-
-// ─── Archive page ──────────────────────────────────────────────────────────────
-function openArchivePage() {
-    state.archiveOpen = true;
-    $('stage').style.display = 'none';
-    $('archive-page').style.display = 'flex';
-    $('btn-archive').classList.add('active');
-    renderArchivePage();
-}
-
-function closeArchivePage() {
-    state.archiveOpen = false;
-    $('archive-page').style.display = 'none';
-    $('stage').style.display = '';
-    $('btn-archive').classList.remove('active');
-}
-
-function renderArchivePage() {
-    const filterEl = document.querySelector('.archive-filter-tab.active');
-    const filterVal = filterEl ? filterEl.dataset.filter : 'all';
-    const searchVal = ($('archive-search').value || '').trim().toLowerCase();
-
-    const archived = [];
-    GRID_CONFIG.forEach(cfg => {
-        GRID_DATA[cfg.id].forEach(cell => {
-            if (cell.archived) archived.push({ cell, cfg });
-        });
-    });
-
-    const filtered = archived.filter(({ cfg }) => {
-        if (filterVal === 'global')   return cfg.id === 'G1' || cfg.id === 'G2';
-        if (filterVal === 'national') return cfg.id === 'L1' || cfg.id === 'L2';
-        if (filterVal === 'cop')      return cfg.id === 'COP';
-        return true;
-    });
-
-    const results = searchVal
-        ? filtered.filter(({ cell }) =>
-            [cell.pcNumber, cell.user, cell.ipAddress,
-             cell.portalName, cell.portalNumber, cell.portalDescription]
-                .join(' ').toLowerCase().includes(searchVal))
-        : filtered;
-
-    const grid = $('archive-cards-grid');
-    grid.innerHTML = '';
-
-    if (results.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'archive-empty';
-        empty.textContent = (searchVal || filterVal !== 'all')
-            ? 'No archived stations match your filter.'
-            : 'No archived stations.';
-        grid.appendChild(empty);
-        return;
-    }
-
-    results.forEach(({ cell, cfg }, ci) => {
-        const card = createCellCard(cell, cfg.colorKey, ci);
-        grid.appendChild(card);
-    });
-}
-
-function navigateCarousel(dir) {
-    const newIdx = (state.activeIndex + dir + GRID_CONFIG.length) % GRID_CONFIG.length;
-    state.activeIndex = newIdx;
-    updateCarouselFocus();
-    updateCarouselLabel();
-    renderCarouselPanel();
-}
-
-function updateCarouselFocus() {
-    $$('.subgrid-wrap').forEach((w, i) => {
-        w.classList.remove('carousel-focused', 'carousel-dimmed');
-        if (i === state.activeIndex) w.classList.add('carousel-focused');
-        else w.classList.add('carousel-dimmed');
-    });
-
-    $$('.carousel-dot').forEach((d, i) => {
-        d.classList.toggle('active', i === state.activeIndex);
-    });
-}
-
-function updateCarouselLabel() {
-    const cfg = GRID_CONFIG[state.activeIndex];
-    const cells = GRID_DATA[cfg.id];
-    $('carousel-label').innerHTML =
-        `<strong>${cfg.label}</strong> — ${cfg.rows}×${cfg.cols} &nbsp;·&nbsp; ${cells.length} cells`;
-}
-
-function renderCarouselPanel() {
-    const cfg = GRID_CONFIG[state.activeIndex];
-    const cells = GRID_DATA[cfg.id];
-    const body = $('cards-grid');
-    body.innerHTML = '';
-
-    $('panel-title').innerHTML = `Subgrid <strong>${cfg.label}</strong>`;
-    $('panel-meta').textContent = `${cells.length} stations · ${cfg.rows} rows × ${cfg.cols} cols`;
-
-    const visibleCells = cells.filter(c => !c.archived);
-    visibleCells.forEach((cell, ci) => {
-        const card = createCellCard(cell, cfg.colorKey, ci);
-        body.appendChild(card);
-    });
-    $('panel-meta').textContent =
-        `${visibleCells.length} stations · ${cfg.rows} rows × ${cfg.cols} cols`;
-}
-
-function createCellCard(cell, colorKey, animIdx) {
-    const card = document.createElement('div');
-    card.className = 'cell-card';
-    card.id = `card-${cell.id}`;
-    card.style.cssText = `
-    --grid-base:  var(--c-${colorKey}-base);
-    --grid-glow:  var(--c-${colorKey}-glow);
-    --grid-muted: var(--c-${colorKey}-muted);
-    --grid-text:  var(--c-${colorKey}-text);
-    animation-delay: ${animIdx * 35}ms;
-  `;
-
-    const fields = [
-        { key: 'user', label: 'User', icon: '👤' },
-        { key: 'ipAddress', label: 'IP Addr', icon: '🌐', mono: true },
-        { key: 'portalName', label: 'Portal', icon: '🔗' },
-        { key: 'portalNumber', label: 'Port No.', icon: '#' },
-    ];
-
-    const fieldsHTML = fields.map(f => {
-        const val = escHtml(cell[f.key] || '—');
-        const cls = ['card-field-value', f.mono ? 'card-ip' : ''].filter(Boolean).join(' ');
         return `
-      <div class="card-field">
-        <span class="card-field-label">${f.label}</span>
-        <span class="${cls}">${val}</span>
-      </div>
-    `;
+        <div class="block" data-color="${cfg.colorKey}" data-grid-id="${cfg.id}" data-index="${idx}">
+            <div class="block-head">
+                <span class="dot"></span>
+                <span class="block-chip">${cfg.label}</span>
+                <span class="block-size">${cfg.rows}×${cfg.cols}</span>
+            </div>
+            <div class="block-frame">
+                <div class="cell-grid" style="grid-template-columns: repeat(${cfg.cols}, var(--cell-size))">${cells}</div>
+            </div>
+        </div>`;
     }).join('');
 
-    const descLinkHTML = `
-    <div class="card-field card-desc-only">
-      <button class="card-desc-link" data-cell-id="${cell.id}" data-grid-id="${getGridIdFromCellId(cell.id)}">
-        View Details
-        <svg viewBox="0 0 12 12"><line x1="2" y1="10" x2="10" y2="2"/><polyline points="5,2 10,2 10,7"/></svg>
-      </button>
-    </div>
-  `;
+    updateWallState();
+}
 
-    card.innerHTML = `
-    <div class="card-pc-num">
-      <span>${cell.pcNumber}</span>
-      <span class="card-pc-badge">#${cell.id.split('-').pop()}</span>
-    </div>
-    ${fieldsHTML}
-    ${descLinkHTML}
-  `;
+function updateWallState() {
+    const q = state.searchQuery;
+    const sel = state.selected;
 
-    card.querySelector('.card-desc-link').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openDetailModal(cell.id, getGridIdFromCellId(cell.id), colorKey);
+    $$('.block').forEach(block => {
+        const idx = Number(block.dataset.index);
+        const gridId = block.dataset.gridId;
+        let anyMatch = false;
+
+        block.querySelectorAll('.cell').forEach(el => {
+            const cell = findCell(gridId, el.dataset.cellId);
+            const match = q && matchesQuery(cell, q);
+            if (match) anyMatch = true;
+            el.classList.toggle('is-match', Boolean(match));
+            el.classList.toggle('is-miss', Boolean(q) && !match);
+            el.classList.toggle('is-selected', Boolean(sel) && sel.cellId === cell.id);
+        });
+
+        block.classList.toggle('is-focused', idx === state.activeIndex);
+        block.classList.toggle('is-dimmed', Boolean(q) && !anyMatch);
+    });
+}
+
+// ─── Block browser ────────────────────────────────────────────────────────────
+function focusBlock(idx) {
+    const n = GRID_CONFIG.length;
+    state.activeIndex = (idx + n) % n;
+    state.blockFilter = '';
+    $('block-filter').value = '';
+    renderBrowser();
+    updateWallState();
+}
+
+function renderBrowser() {
+    const cfg = GRID_CONFIG[state.activeIndex];
+    const cells = visibleCells(cfg.id);
+    const shown = sortCells(cells.filter(c => matchesQuery(c, state.blockFilter)));
+
+    $('block-dots').innerHTML = GRID_CONFIG.map((c, i) => `
+        <button class="block-dot${i === state.activeIndex ? ' is-active' : ''}" type="button" role="tab"
+            data-color="${c.colorKey}" data-index="${i}" aria-selected="${i === state.activeIndex}"
+            aria-label="${c.label}" title="${c.label}"></button>`).join('');
+
+    const showing = state.blockFilter ? ` · showing ${shown.length} of ${cells.length}` : '';
+    $('browser-label').innerHTML =
+        `<strong>${cfg.label}</strong> — ${cfg.rows}×${cfg.cols} · ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}${showing}`;
+
+    $$('#sort-label [data-sort]').forEach(el => {
+        const active = el.dataset.sort === state.sortBy;
+        el.classList.toggle('is-active', active);
+        el.setAttribute('aria-hidden', String(!active));
     });
 
-    return card;
+    const grid = $('card-grid');
+    grid.innerHTML = shown.length
+        ? shown.map(cell => cardHTML(cell, cfg)).join('')
+        : `<div class="empty-state">No stations in ${cfg.label} match “${escHtml(state.blockFilter)}”.</div>`;
 }
 
-function getGridIdFromCellId(cellId) {
-    const parts = cellId.split('-');
-    return parts.length >= 2 ? parts[0] : cellId;
+function cardHTML(cell, cfg) {
+    const sel = state.selected;
+    const isSel = sel && sel.cellId === cell.id;
+    const fields = [
+        ['User', cell.user],
+        ['IP Addr', cell.ipAddress],
+        ['Portal', cell.portalName],
+    ];
+    return `
+    <article class="card${isSel ? ' is-selected' : ''}" tabindex="0" data-color="${cfg.colorKey}"
+        data-grid-id="${cfg.id}" data-cell-id="${cell.id}" aria-label="${escHtml(cell.pcNumber)}, ${escHtml(cell.portalName)}">
+        <div class="card-body">
+            <div class="card-head">
+                <span class="card-pc">${escHtml(cell.pcNumber)}</span>
+                <span class="card-badge">${escHtml(displayNumber(cell))}</span>
+            </div>
+            <dl class="card-fields">
+                ${fields.map(([k, v]) => `
+                <div class="card-field"><dt>${k}</dt><dd title="${escHtml(v || '')}">${escHtml(v || '—')}</dd></div>`).join('')}
+            </dl>
+            <span class="card-link">View in panel ${ic('arrow-right', 14)}</span>
+        </div>
+    </article>`;
 }
 
-// ─── Search ────────────────────────────────────────────────────────────────────
-function handleSearch(query) {
-    state.searchQuery = query.trim().toLowerCase();
-    applySearch();
-}
+// ─── Archive ──────────────────────────────────────────────────────────────────
+const ARCHIVE_GROUPS = {
+    global: ['G1', 'G2'],
+    national: ['N1', 'N2'],
+    cop: ['COP'],
+};
 
-function applySearch() {
-    const q = state.searchQuery;
+function renderArchive() {
+    const q = ($('archive-search').value || '').trim().toLowerCase();
+    const groups = ARCHIVE_GROUPS[state.archiveFilter];
 
-    if (!q) {
-        $$('.grid-cell').forEach(c => c.classList.remove('search-match', 'search-miss'));
-        $$('.subgrid-wrap').forEach(w => w.style.opacity = '');
-        return;
-    }
-
-    const matchedGrids = new Set();
-
+    const items = [];
     GRID_CONFIG.forEach(cfg => {
-        const cells = GRID_DATA[cfg.id];
-        cells.forEach(cell => {
-            const haystack = [
-                cell.pcNumber, cell.user, cell.ipAddress,
-                cell.portalName, cell.portalNumber, cell.portalDescription,
-            ].join(' ').toLowerCase();
-
-            const matches = haystack.includes(q);
-            const ovCell = $(`cell-ov-${cell.id}`);
-            if (ovCell) {
-                ovCell.classList.toggle('search-match', matches);
-                ovCell.classList.toggle('search-miss', !matches);
-            }
-            if (matches) matchedGrids.add(cfg.id);
+        if (groups && !groups.includes(cfg.id)) return;
+        inPortalOrder(GRID_DATA[cfg.id]).forEach(cell => {
+            if (cell.archived && matchesQuery(cell, q)) items.push(cardHTML(cell, cfg));
         });
     });
 
-    $$('.subgrid-wrap').forEach(w => {
-        const gid = w.dataset.gridId;
-        w.style.opacity = matchedGrids.has(gid) ? '' : '0.3';
-    });
+    $$('#archive-tabs .seg-tab').forEach(t =>
+        t.classList.toggle('is-active', t.dataset.filter === state.archiveFilter));
+
+    $('archive-grid').innerHTML = items.length
+        ? items.join('')
+        : `<div class="empty-state">${q || state.archiveFilter !== 'all'
+            ? 'No archived stations match your filter.'
+            : 'No archived stations.'}</div>`;
 }
 
-// ─── PC Detail Modal ──────────────────────────────────────────────────────────
-const COLOR_VARS = {
-    outer: { base: '--c-outer-base', glow: '--c-outer-glow', muted: '--c-outer-muted', text: '--c-outer-text' },
-    inner: { base: '--c-inner-base', glow: '--c-inner-glow', muted: '--c-inner-muted', text: '--c-inner-text' },
-    mid: { base: '--c-mid-base', glow: '--c-mid-glow', muted: '--c-mid-muted', text: '--c-mid-text' },
-};
+// ─── Selection & side panel ───────────────────────────────────────────────────
+function selectCell(gridId, cellId) {
+    state.selected = { gridId, cellId };
+    const idx = cfgIndex(gridId);
+    const cell = findCell(gridId, cellId);
+    // Jump the browser to the station's block (archived stations stay in the archive list)
+    if (idx !== state.activeIndex && cell && !cell.archived) {
+        state.activeIndex = idx;
+        state.blockFilter = '';
+        $('block-filter').value = '';
+    }
+    refreshSelection();
+    // Stacked layout: the panel sits below the lists, so bring it into view
+    if (window.matchMedia('(max-width: 1080px)').matches) {
+        $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
 
-function openDetailModal(cellId, gridId, colorKey) {
-    const cell = (GRID_DATA[gridId] || []).find(c => c.id === cellId);
-    if (!cell) return;
+function clearSelection() {
+    state.selected = null;
+    refreshSelection();
+}
 
-    _currentModalCell     = cell;
-    _currentModalColorKey = colorKey;
-    _currentModalGridId   = gridId;
+function refreshSelection() {
+    renderPanel();
+    renderBrowser();
+    updateWallState();
+    if (state.view === 'archive') renderArchive();
+}
 
-    const cv = COLOR_VARS[colorKey] || COLOR_VARS.outer;
-    const box = $('detail-modal-box');
+const PANEL_TABS = [
+    { id: 'overview', label: 'Overview', icon: 'info' },
+    { id: 'access', label: 'Access', icon: 'terminal' },
+    { id: 'about', label: 'About', icon: 'file-text' },
+];
 
-    box.style.setProperty('--dm-color', `var(${cv.base})`);
-    box.style.setProperty('--dm-color-glow', `var(${cv.glow})`);
-    box.style.setProperty('--dm-color-muted', `var(${cv.muted})`);
-    box.style.setProperty('--dm-color-text', `var(${cv.text})`);
+function renderPanel() {
+    const panel = $('panel');
+    const sel = getSelected();
 
-    $('dm-pc-name').textContent = cell.pcNumber;
-    $('dm-grid-label').textContent = `Subgrid ${gridId}`;
-
-    const body = $('dm-body');
-    body.innerHTML = '';
-
-    const mainFields = [
-        { key: 'pcNumber', label: 'PC Number', mono: true },
-        { key: 'user', label: 'User' },
-        { key: 'ipAddress', label: 'IP Address', mono: true },
-        { key: 'portalName', label: 'Portal Name' },
-        { key: 'portalNumber', label: 'Portal No.', mono: true },
-    ];
-
-    mainFields.forEach(f => {
-        const row = document.createElement('div');
-        row.className = 'detail-field-row';
-        const cls = ['detail-field-value', f.mono ? 'mono' : ''].filter(Boolean).join(' ');
-        row.innerHTML = `
-      <span class="detail-field-label">${f.label}</span>
-      <span class="${cls}">${escHtml(cell[f.key] || '—')}</span>
-    `;
-        body.appendChild(row);
-    });
-
-    const hr = document.createElement('hr');
-    hr.className = 'detail-divider';
-    body.appendChild(hr);
-
-    // ── Portal Access ─────────────────────────────────────────
-    const accessSection = document.createElement('div');
-    accessSection.className = 'detail-access-section';
-
-    const accessHeading = document.createElement('div');
-    accessHeading.className = 'detail-section-heading';
-    accessHeading.innerHTML = `
-      <svg viewBox="0 0 14 14" style="width:10px;height:10px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0;">
-        <rect x="1" y="3" width="12" height="9" rx="1.5"/>
-        <path d="M1 7h12"/>
-        <path d="M5 3V1M9 3V1"/>
-      </svg>
-      Portal Access`;
-    accessSection.appendChild(accessHeading);
-
-    const port     = cell.portalPort  || '';
-    const ip       = cell.ipAddress   || '';
-    const srvType  = cell.serverType  || '';
-    const projDir  = cell.projectDir  || '';
-    const pathSuffix = cell.portalPath ? '/' + cell.portalPath.replace(/^\//, '') : '';
-
-    if (!port && !srvType) {
-        const noInfo = document.createElement('p');
-        noInfo.className = 'detail-access-empty';
-        noInfo.textContent = 'No portal access configured for this station.';
-        accessSection.appendChild(noInfo);
-    } else {
-        // ── Server type badge ──────────────────────────────────
-        if (srvType) {
-            const typeLabels = {
-                vscode:  'VS Code Live Server',
-                npm:     'Node (npm) Server',
-                browser: 'Direct Browser Access',
-            };
-            const typeBadge = document.createElement('div');
-            typeBadge.className = `detail-access-type-badge access-type-${srvType}`;
-            typeBadge.textContent = typeLabels[srvType] || srvType;
-            accessSection.appendChild(typeBadge);
-        }
-
-        // Helper: build a label + content row
-        const mkRow = (label, contentEl) => {
-            const row = document.createElement('div');
-            row.className = 'detail-access-info-row';
-            const lbl = document.createElement('span');
-            lbl.className = 'access-info-label';
-            lbl.textContent = label;
-            row.appendChild(lbl);
-            row.appendChild(contentEl);
-            return row;
-        };
-
-        // ── Project folder (vscode / npm only) ────────────────
-        if (projDir && (srvType === 'vscode' || srvType === 'npm')) {
-            const val = document.createElement('span');
-            val.className = 'access-info-value mono';
-            val.textContent = projDir;
-            accessSection.appendChild(mkRow('Folder', val));
-        }
-
-        // ── How to start ───────────────────────────────────────
-        const howToMap = {
-            vscode: [
-                'Open the project folder in VS Code',
-                'In the Explorer panel, right-click index.html',
-                'Select "Open with Live Server"',
-            ],
-            npm: [
-                'Open a terminal window',
-                'Navigate (cd) to the project folder',
-                'Run: npm start OR npm run dev',
-            ],
-            browser: [
-                'No local setup required on this machine',
-                'Open the URL below in any browser on this network',
-            ],
-        };
-        const steps = howToMap[srvType];
-        if (steps) {
-            const ol = document.createElement('ol');
-            ol.className = 'access-info-steps';
-            steps.forEach(s => {
-                const li = document.createElement('li');
-                li.textContent = s;
-                ol.appendChild(li);
-            });
-            accessSection.appendChild(mkRow('Start', ol));
-        }
-
-        // ── Browser URL ────────────────────────────────────────
-        if (port) {
-            let url;
-            if (srvType === 'vscode') {
-                url = `http://127.0.0.1:${port}${pathSuffix}`;
-            } else if (srvType === 'npm') {
-                url = `http://localhost:${port}${pathSuffix}`;
-            } else if (srvType === 'browser') {
-                url = ip ? `http://${ip}:${port}${pathSuffix}` : `http://localhost:${port}${pathSuffix}`;
-            } else {
-                url = `http://localhost:${port}${pathSuffix}`;
-            }
-            const val = document.createElement('span');
-            val.className = 'access-info-value mono access-url';
-            val.textContent = url;
-            accessSection.appendChild(mkRow('Open in', val));
-        }
-
-        // ── IP : Port badge ────────────────────────────────────
-        const ipBadge = document.createElement('div');
-        ipBadge.className = 'detail-access-ip-badge';
-        ipBadge.innerHTML = `
-          <svg viewBox="0 0 14 14" style="width:11px;height:11px;stroke:currentColor;stroke-width:2;stroke-linecap:round;fill:none;flex-shrink:0;">
-            <circle cx="7" cy="7" r="5.5"/>
-            <path d="M7 1.5C5.5 3.5 4.5 5.2 4.5 7s1 3.5 2.5 5.5"/>
-            <path d="M7 1.5C8.5 3.5 9.5 5.2 9.5 7s-1 3.5-2.5 5.5"/>
-            <line x1="1.5" y1="7" x2="12.5" y2="7"/>
-          </svg>
-          <span class="access-ip">${ip || '—'}</span>
-          <span class="access-sep">:</span>
-          <span class="access-port">${port || '—'}</span>
-        `;
-        accessSection.appendChild(ipBadge);
+    if (!sel) {
+        panel.removeAttribute('data-color');
+        panel.innerHTML = `
+        <div class="panel-empty">
+            <div class="panel-empty-icon">${ic('monitor', 22)}</div>
+            <div class="panel-empty-title">No station selected</div>
+            <p>Click a cell on the wall or a card below to see its operator, network and portal access here.</p>
+        </div>`;
+        return;
     }
 
-    body.appendChild(accessSection);
+    const { cell, cfg } = sel;
+    panel.dataset.color = cfg.colorKey;
 
-    // ── About ─────────────────────────────────────────────────
-    const aboutSection = document.createElement('div');
-    aboutSection.className = 'detail-about-section';
+    const tabs = PANEL_TABS.map(t => `
+        <button class="panel-tab${t.id === state.panelTab ? ' is-active' : ''}" type="button" role="tab"
+            data-tab="${t.id}" aria-selected="${t.id === state.panelTab}">${ic(t.icon, 14)}${t.label}</button>`).join('');
 
-    const aboutHeading = document.createElement('div');
-    aboutHeading.className = 'detail-section-heading';
-    aboutHeading.innerHTML = `
-      <svg viewBox="0 0 14 14" style="width:10px;height:10px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0;">
-        <circle cx="7" cy="7" r="5.5"/>
-        <line x1="7" y1="5" x2="7" y2="9.5"/>
-        <line x1="7" y1="3.5" x2="7" y2="4.2"/>
-      </svg>
-      About`;
-    aboutSection.appendChild(aboutHeading);
+    const body = state.panelTab === 'access' ? panelAccessTab(cell)
+        : state.panelTab === 'about' ? panelAboutTab(cell, cfg)
+            : panelOverviewTab(cell);
 
-    const descBlock = document.createElement('div');
-    descBlock.className = 'detail-desc-block';
-    descBlock.textContent = cell.portalDescription || '—';
-    aboutSection.appendChild(descBlock);
+    const alertAttrs = cell.mail ? '' : 'disabled title="No email on file for this operator"';
 
-    const readMoreBtn = document.createElement('button');
-    readMoreBtn.className = 'card-desc-link about-read-more';
-    readMoreBtn.innerHTML = `Read More <svg viewBox="0 0 12 12" style="width:11px;height:11px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;display:inline-block;vertical-align:middle;"><line x1="2" y1="10" x2="10" y2="2"/><polyline points="5,2 10,2 10,7"/></svg>`;
-    readMoreBtn.addEventListener('click', () => {
-        closeDetailModal();
-        openAboutModal(cell, colorKey, gridId);
-    });
-    aboutSection.appendChild(readMoreBtn);
-
-    body.appendChild(aboutSection);
-
-    $('detail-modal').classList.add('open');
+    panel.innerHTML = `
+    <div class="panel-head">
+        <div class="panel-icon">${ic('monitor', 18)}</div>
+        <div class="panel-heading">
+            <div class="panel-title">${escHtml(cell.pcNumber)}</div>
+            <div class="panel-sub">Subgrid ${cfg.label} · Portal ${escHtml(displayNumber(cell))}</div>
+        </div>
+        <button id="panel-close" class="icon-btn icon-btn-sm" type="button" aria-label="Clear selection" title="Clear selection (Esc)">${ic('x', 14)}</button>
+    </div>
+    <div class="panel-tabs" role="tablist">${tabs}</div>
+    <div class="panel-body" role="tabpanel">${body}</div>
+    <div class="panel-foot">
+        <button id="panel-alert" class="btn btn-danger btn-lg" type="button" ${alertAttrs}>${ic('mail', 15)}Send Alert</button>
+        <button id="panel-recall" class="btn btn-muted btn-lg" type="button">${ic('phone', 14)}Recall</button>
+    </div>`;
 }
 
-function closeDetailModal() {
-    $('detail-modal').classList.remove('open');
+function panelOverviewTab(cell) {
+    const access = accessInfo(cell);
+    return `
+    <div class="tiles">
+        <div class="tile">
+            <div class="tile-label">Operator</div>
+            <div class="tile-value" title="${escHtml(cell.user)}">${escHtml(cell.user || '—')}</div>
+            <div class="tile-meta" title="${escHtml(cell.mail)}">${escHtml(cell.mail || 'No email on file')}</div>
+        </div>
+        <div class="tile">
+            <div class="tile-label">Network</div>
+            <div class="tile-value">${escHtml(cell.ipAddress || '—')}</div>
+            <div class="tile-meta">${access && access.port ? `Port ${escHtml(access.port)}` : 'No port configured'}</div>
+        </div>
+    </div>
+    <div>
+        <div class="section-label">Portal access</div>
+        ${accessSection(cell, false)}
+    </div>
+    ${aboutSection(cell, true)}`;
 }
 
-function openAboutModal(cell, colorKey, gridId) {
-    const cv = COLOR_VARS[colorKey] || COLOR_VARS.outer;
-    const box = $('about-modal-box');
-
-    box.style.setProperty('--dm-color',       `var(${cv.base})`);
-    box.style.setProperty('--dm-color-glow',  `var(${cv.glow})`);
-    box.style.setProperty('--dm-color-muted', `var(${cv.muted})`);
-    box.style.setProperty('--dm-color-text',  `var(${cv.text})`);
-
-    $('am-portal-name').textContent = cell.portalName || '—';
-    $('am-grid-label').textContent  = `Subgrid ${gridId}`;
-
-    const body = $('am-body');
-    body.innerHTML = '';
-
-    const heading = document.createElement('div');
-    heading.className = 'detail-section-heading';
-    heading.innerHTML = `
-      <svg viewBox="0 0 14 14" style="width:10px;height:10px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0;">
-        <circle cx="7" cy="7" r="5.5"/>
-        <line x1="7" y1="5" x2="7" y2="9.5"/>
-        <line x1="7" y1="3.5" x2="7" y2="4.2"/>
-      </svg>
-      About`;
-    body.appendChild(heading);
-
-    const descBlock = document.createElement('div');
-    descBlock.className = 'detail-desc-block';
-    descBlock.textContent = cell.portalDescription || '—';
-    body.appendChild(descBlock);
-
-    $('about-modal').classList.add('open');
+function panelAccessTab(cell) {
+    return `
+    <div>
+        <div class="section-label">Portal access</div>
+        ${accessSection(cell, true)}
+    </div>`;
 }
 
-function closeAboutModal() {
-    $('about-modal').classList.remove('open');
+function panelAboutTab(cell, cfg) {
+    return `
+    ${aboutSection(cell, false)}
+    <div class="inset">
+        ${kv('Portal no.', escHtml(displayNumber(cell)))}
+        ${kv('Subgrid', `${cfg.label} · ${cfg.rows}×${cfg.cols}`)}
+        ${kv('Position', `Row ${cell.row + 1} · Col ${cell.col + 1}`)}
+    </div>`;
+}
+
+function kv(key, valueHTML) {
+    return `<div class="kv"><span class="kv-key">${key}</span><span class="kv-val">${valueHTML}</span></div>`;
+}
+
+function accessSection(cell, detailed) {
+    const access = accessInfo(cell);
+    if (!access) {
+        return `
+        <div class="callout">
+            ${ic('alert-triangle', 15)}
+            <div><strong>Access not configured.</strong> No port or server type is set for this station yet.</div>
+        </div>`;
+    }
+
+    const badge = `${escHtml(access.label)}${access.port ? ` · Port ${escHtml(access.port)}` : ''}`;
+    const folder = cell.projectDir && access.type !== 'browser' ? kv('Folder', escHtml(cell.projectDir)) : '';
+    const start = detailed && access.steps.length
+        ? kv('Start', `<ol class="steps">${access.steps.map(s => `<li>${escHtml(s)}</li>`).join('')}</ol>`)
+        : access.start ? kv('Start', escHtml(access.start)) : '';
+    const url = access.url ? `
+        <a class="url-box" href="${escHtml(access.url)}" target="_blank" rel="noopener">
+            ${ic('globe', 14)}<span>${escHtml(access.url.replace(/^https?:\/\//, ''))}</span>${ic('external-link', 13)}
+        </a>` : '';
+    const where = access.type === 'browser'
+        ? 'Reachable from any PC on the network'
+        : `Runs locally on ${escHtml(cell.pcNumber)} · ${escHtml(cell.ipAddress)}`;
+
+    return `
+    <div class="inset">
+        <span class="type-badge" data-type="${escHtml(access.type)}">${badge}</span>
+        ${folder}
+        ${start}
+        ${url}
+        <div class="note">${ic('monitor', 13)}${where}</div>
+    </div>`;
+}
+
+function aboutSection(cell, compact) {
+    const desc = hasDescription(cell);
+    const long = desc && cell.portalDescription.length > 160;
+    const text = desc
+        ? `<div class="about-text${compact ? ' is-clamped' : ''}">${escHtml(cell.portalDescription)}</div>`
+        : `<div class="about-text is-empty">No description added yet.</div>`;
+    return `
+    <div>
+        <div class="section-label">About this portal</div>
+        <div class="about-box">
+            <div class="about-title">${escHtml(cell.portalName)}</div>
+            ${text}
+        </div>
+        ${compact && long ? `<button class="link-btn" type="button" data-goto-tab="about" style="margin-top: var(--sp-2)">Read more ${ic('arrow-right', 14)}</button>` : ''}
+    </div>`;
 }
 
 // ─── Send Alert Email ─────────────────────────────────────────────────────────
 async function sendAlertEmail(cell, gridId) {
     const toEmail = cell.mail;
-    const toName  = cell.user;
+    const toName = cell.user;
     if (!toEmail) {
-        showToast('⚠️', `No email set for ${cell.pcNumber}`, 'warn');
+        showToast('warn', `No email set for ${cell.pcNumber}`);
+        return;
+    }
+    if (typeof emailjs === 'undefined') {
+        showToast('error', 'Email service unavailable — check the internet connection');
         return;
     }
     const timestamp = new Date().toLocaleString('en-US', { hour12: false });
-    const alertBtn  = $('dm-alert-btn');
+    const alertBtn = $('panel-alert');
+    const setBusy = busy => {
+        if (!alertBtn) return;
+        alertBtn.disabled = busy;
+        alertBtn.innerHTML = `${ic('mail', 15)}${busy ? 'Sending…' : 'Send Alert'}`;
+    };
 
-    if (alertBtn) { alertBtn.disabled = true; alertBtn.textContent = 'Sending…'; }
-
+    setBusy(true);
     try {
         await emailjs.send(
             EJS_SERVICE_ID,
             EJS_TEMPLATE_ID,
             {
-                to_email:   toEmail,
-                to_name:    toName,
-                message:    `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
-                pc_number:  cell.pcNumber,
-                portal:     cell.portalName,
-                subgrid:    gridId,
+                to_email: toEmail,
+                to_name: toName,
+                message: `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
+                pc_number: cell.pcNumber,
+                portal: cell.portalName,
+                subgrid: gridId,
                 ip_address: cell.ipAddress,
-                timestamp:  timestamp,
+                timestamp: timestamp,
             },
             EJS_PUBLIC_KEY
         );
 
         console.log(`[Alert] SUCCESS | ${toName} <${toEmail}> | ${timestamp}`);
-        showToast('✅', `Alert sent to ${toName}`, 'success');
+        showToast('success', `Alert sent to ${toName}`);
     } catch (err) {
         console.error(`[Alert] FAILED | ${toName} <${toEmail}> | ${timestamp} |`, err);
-        showToast('❌', `Send failed — see console`, 'error');
+        showToast('error', 'Send failed — see console');
     } finally {
-        if (alertBtn) { alertBtn.disabled = false; alertBtn.textContent = 'Send Alert'; }
+        // The panel may have been re-rendered for another station meanwhile
+        if ($('panel-alert') === alertBtn) setBusy(false);
     }
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+function handleSearch(query) {
+    state.searchQuery = query.trim().toLowerCase();
+    updateWallState();
+}
+
+function selectFirstMatch() {
+    if (!state.searchQuery) return;
+    for (const cfg of GRID_CONFIG) {
+        const hit = inPortalOrder(visibleCells(cfg.id)).find(c => matchesQuery(c, state.searchQuery));
+        if (hit) {
+            if (state.view !== 'wall') setView('wall');
+            selectCell(cfg.id, hit.id);
+            return;
+        }
+    }
+    showToast('info', 'No station matches that search');
 }
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
-function updateStatusBar() {
-    const total = GRID_CONFIG.reduce((s, c) => s + c.rows * c.cols, 0);
-    $('status-total').textContent = `${total} stations`;
+function renderStatusBar() {
+    const cells = allVisibleCells();
+    const configured = cells.filter(isConfigured).length;
+    const needSetup = cells.length - configured;
+
+    $('status-stations').textContent = `${cells.length} stations · ${configured} configured`;
     $('status-grids').textContent = `${GRID_CONFIG.length} subgrids`;
-    $('status-time').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+    $('status-setup').textContent = `${needSetup} need setup`;
+    $('status-setup-wrap').hidden = needSetup === 0;
+    $('page-sub').textContent =
+        `${GRID_CONFIG.length} blocks · ${cells.length} positions · click a cell to inspect it in the side panel`;
 }
 
-setInterval(() => {
-    if ($('status-time')) {
-        $('status-time').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
-    }
-}, 1000);
+// Urbanist has no tabular figures, so each digit gets a fixed-width slot to keep the clock from shifting
+function tickClock() {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    $('status-time').innerHTML = [...time]
+        .map(ch => /\d/.test(ch) ? `<span class="clock-digit">${ch}</span>` : ch)
+        .join('');
+}
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
+const TOAST_ICONS = { success: 'check-circle', error: 'alert-circle', warn: 'alert-triangle', info: 'info' };
 let toastTimer;
-function showToast(icon, msg, type = 'success') {
+
+function showToast(type, msg) {
     const toast = $('toast');
-    $('toast-icon').textContent = icon;
+    $('toast-icon').innerHTML = svgIcon(TOAST_ICONS[type] || 'info', 16);
     $('toast-msg').textContent = msg;
     toast.className = `toast ${type} show`;
     clearTimeout(toastTimer);
@@ -690,87 +609,130 @@ function showToast(icon, msg, type = 'success') {
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 function escHtml(str) {
-    return String(str)
+    return String(str ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
 function attachListeners() {
-    // Theme
+    // Topbar
     $('btn-theme').addEventListener('click', toggleTheme);
+    $('btn-wall').addEventListener('click', () => setView('wall'));
+    $('btn-archive').addEventListener('click', () => setView(state.view === 'archive' ? 'wall' : 'archive'));
+    $('btn-alerts').addEventListener('click', () =>
+        showToast('info', 'Select a station, then use Send Alert in the side panel'));
 
-    // Carousel toggle
-    $('btn-carousel').addEventListener('click', toggleCarousel);
-
-    // Carousel navigation
-    $('carousel-prev').addEventListener('click', () => navigateCarousel(-1));
-    $('carousel-next').addEventListener('click', () => navigateCarousel(+1));
-
-    // Search
-    $('search-input').addEventListener('input', e => handleSearch(e.target.value));
+    $('search-input').addEventListener('input', e => {
+        handleSearch(e.target.value);
+        $('search-clear').hidden = !e.target.value;
+    });
+    $('search-clear').addEventListener('click', () => {
+        const input = $('search-input');
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+        input.focus();
+    });
     $('search-input').addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            e.target.value = '';
-            handleSearch('');
-            e.target.blur();
+        if (e.key === 'Enter') selectFirstMatch();
+    });
+
+    // Wall: cell → select, block header/frame → focus block
+    $('wall').addEventListener('click', e => {
+        const cell = e.target.closest('.cell');
+        if (cell) {
+            selectCell(cell.dataset.gridId, cell.dataset.cellId);
+            return;
+        }
+        const block = e.target.closest('.block');
+        if (block && (e.target.closest('.block-head') || e.target.closest('.block-frame'))) {
+            focusBlock(Number(block.dataset.index));
         }
     });
 
-    // Detail modal close
-    $('detail-modal-close').addEventListener('click', closeDetailModal);
-    $('detail-modal').addEventListener('click', e => {
-        if (e.target === $('detail-modal')) closeDetailModal();
+    // Block browser
+    $('block-prev').addEventListener('click', () => focusBlock(state.activeIndex - 1));
+    $('block-next').addEventListener('click', () => focusBlock(state.activeIndex + 1));
+    $('block-dots').addEventListener('click', e => {
+        const dot = e.target.closest('.block-dot');
+        if (dot) focusBlock(Number(dot.dataset.index));
     });
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && $('detail-modal').classList.contains('open')) {
-            closeDetailModal();
-        }
-    }, true);
+    $('block-filter').addEventListener('input', e => {
+        state.blockFilter = e.target.value.trim().toLowerCase();
+        renderBrowser();
+    });
+    $('btn-sort').addEventListener('click', () => {
+        state.sortBy = state.sortBy === 'portal' ? 'pc' : 'portal';
+        renderBrowser();
+    });
+    $('open-archive').addEventListener('click', () => setView(state.view === 'archive' ? 'wall' : 'archive'));
 
-    // About modal close
-    $('about-modal-close').addEventListener('click', closeAboutModal);
-    $('about-modal').addEventListener('click', e => {
-        if (e.target === $('about-modal')) closeAboutModal();
-    });
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && $('about-modal').classList.contains('open')) {
-            closeAboutModal();
-        }
-    }, true);
-    document.addEventListener('keydown', e => {
-        if (e.target.tagName === 'INPUT') return;
-        if (!state.carouselActive) return;
-        if (e.key === 'ArrowLeft') navigateCarousel(-1);
-        if (e.key === 'ArrowRight') navigateCarousel(+1);
-        if (e.key === 'Escape') closeCarousel();
-    });
-
-    // Archive page
-    $('btn-archive').addEventListener('click', () => {
-        if (state.archiveOpen) closeArchivePage();
-        else openArchivePage();
-    });
-    $('archive-home-btn').addEventListener('click', closeArchivePage);
-    $$('.archive-filter-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            $$('.archive-filter-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            renderArchivePage();
+    // Cards (wall browser + archive): click or Enter/Space → select
+    ['card-grid', 'archive-grid'].forEach(id => {
+        const grid = $(id);
+        grid.addEventListener('click', e => {
+            const card = e.target.closest('.card');
+            if (card) selectCell(card.dataset.gridId, card.dataset.cellId);
+        });
+        grid.addEventListener('keydown', e => {
+            const card = e.target.closest('.card');
+            if (card && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                selectCell(card.dataset.gridId, card.dataset.cellId);
+            }
         });
     });
-    $('archive-search').addEventListener('input', () => renderArchivePage());
 
-    // Restore theme from storage
-    const saved = localStorage.getItem('ndma_theme');
-    if (saved) applyTheme(saved);
+    // Archive
+    $('archive-back').addEventListener('click', () => setView('wall'));
+    $('archive-tabs').addEventListener('click', e => {
+        const tab = e.target.closest('.seg-tab');
+        if (!tab) return;
+        state.archiveFilter = tab.dataset.filter;
+        renderArchive();
+    });
+    $('archive-search').addEventListener('input', renderArchive);
 
-    // Alert button in detail modal — send directly, no modal
-    $('dm-alert-btn').addEventListener('click', () => {
-        if (!_currentModalCell) return;
-        sendAlertEmail(_currentModalCell, _currentModalGridId);
+    // Side panel (re-rendered, so delegate)
+    $('panel').addEventListener('click', e => {
+        const tab = e.target.closest('[data-tab], [data-goto-tab]');
+        if (tab) {
+            state.panelTab = tab.dataset.tab || tab.dataset.gotoTab;
+            renderPanel();
+            return;
+        }
+        if (e.target.closest('#panel-close')) {
+            clearSelection();
+            return;
+        }
+        if (e.target.closest('#panel-alert')) {
+            const sel = getSelected();
+            if (sel) sendAlertEmail(sel.cell, sel.cfg.id);
+            return;
+        }
+        if (e.target.closest('#panel-recall')) {
+            showToast('info', 'Recall is not set up yet — use Send Alert to email the operator');
+        }
     });
 
+    // Keyboard: ← → move between blocks, Esc clears input / selection
+    document.addEventListener('keydown', e => {
+        const typing = e.target.matches('input, textarea');
+        if (e.key === 'Escape') {
+            if (typing) {
+                e.target.value = '';
+                e.target.dispatchEvent(new Event('input'));
+                e.target.blur();
+            } else if (state.selected) {
+                clearSelection();
+            }
+            return;
+        }
+        if (typing || state.view !== 'wall') return;
+        if (e.key === 'ArrowLeft') focusBlock(state.activeIndex - 1);
+        if (e.key === 'ArrowRight') focusBlock(state.activeIndex + 1);
+    });
 }
