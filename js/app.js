@@ -6,7 +6,7 @@
 // ─── App State ────────────────────────────────────────────────────────────────
 const state = {
     view: 'wall',             // 'wall' | 'archive'
-    activeIndex: 0,           // focused block (index into GRID_CONFIG)
+    activeIndex: Math.max(0, GRID_CONFIG.findIndex(g => g.id === 'COP')),   // focused block (index into GRID_CONFIG); COP by default
     selected: null,           // { gridId, cellId } shown in the side panel
     panelTab: 'overview',     // 'overview' | 'description'
     searchQuery: '',
