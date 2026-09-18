@@ -66,6 +66,11 @@ function svgIcon(name, size = 16) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
 
+// Small solid bell shown on wall cells whose alerts reach at least one device
+const BELL_SOLID = '<svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor" aria-hidden="true">'
+    + '<path d="M12 2a6 6 0 0 0-6 6c0 4.5-1.4 6-2.7 7.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8a6 6 0 0 0-6-6z"/>'
+    + '<path d="M9.3 19a2.7 2.7 0 0 0 5.4 0z"/></svg>';
+
 function ic(name, size = 16) {
     return `<span data-icon="${name}" data-size="${size}">${svgIcon(name, size)}</span>`;
 }
@@ -355,9 +360,6 @@ function selectDevPortal(devId, portalId) {
     state.devId = devId;
     state.selected = null;
     refreshSelection();
-    if (window.matchMedia('(max-width: 1080px)').matches) {
-        $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
 }
 
 // Side panel for a developer's portal — build info rather than live station info
@@ -473,6 +475,9 @@ document.addEventListener('DOMContentLoaded', () => {
     attachListeners();
     initPwa();
     initAlertOverlay();
+    initSheetGestures();
+    getPushStatus().then(updateWallState);
+    setInterval(() => { if (!document.hidden) getPushStatus(true).then(updateWallState); }, 60000);
     refreshPushRegistrations();
     tickClock();
     setInterval(tickClock, 1000);
@@ -520,7 +525,9 @@ function renderWall() {
     wall.innerHTML = GRID_CONFIG.map((cfg, idx) => {
         const cells = visibleCells(cfg.id).map(cell => `
             <button class="cell" type="button" data-grid-id="${cfg.id}" data-cell-id="${cell.id}"
+                data-title="${escHtml(cell.portalName)} — ${escHtml(cell.user)}"
                 title="${escHtml(cell.portalName)} — ${escHtml(cell.user)}">
+                <span class="cell-bell">${BELL_SOLID}</span>
                 <span class="cell-num">${escHtml(displayNumber(cell))}</span>
                 <span class="cell-pc">${escHtml(cell.pcNumber)}</span>
             </button>`).join('');
@@ -557,6 +564,10 @@ function updateWallState() {
             el.classList.toggle('is-match', Boolean(match));
             el.classList.toggle('is-miss', Boolean(q) && !match);
             el.classList.toggle('is-selected', Boolean(sel) && sel.cellId === cell.id);
+            // Bell: this station's alerts reach at least one device
+            const devices = (pushStatusValue && pushStatusValue.stations && pushStatusValue.stations[displayNumber(cell)]) || 0;
+            el.classList.toggle('has-alerts', devices > 0);
+            el.title = el.dataset.title + (devices ? ` · alerts on ${devices} device${devices === 1 ? '' : 's'}` : '');
         });
 
         block.classList.toggle('is-focused', idx === state.activeIndex);
@@ -572,6 +583,10 @@ function focusBlock(idx) {
     $('block-filter').value = '';
     renderBrowser();
     updateWallState();
+    if (isNarrow()) {
+        const block = document.querySelector(`.block[data-index="${state.activeIndex}"]`);
+        if (block) block.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
 }
 
 function renderBrowser() {
@@ -668,10 +683,6 @@ function selectCell(gridId, cellId) {
         $('block-filter').value = '';
     }
     refreshSelection();
-    // Stacked layout: the panel sits below the lists, so bring it into view
-    if (window.matchMedia('(max-width: 1080px)').matches) {
-        $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
 }
 
 function clearSelection() {
@@ -693,7 +704,52 @@ const PANEL_TABS = [
     { id: 'description', label: 'Description', icon: 'file-text' },
 ];
 
+// ─── Mobile: the side panel becomes a bottom sheet ───────────────────────────
+const isNarrow = () => window.matchMedia('(max-width: 1080px)').matches;
+
+function syncSheet() {
+    const open = Boolean(getSelected() || getDevPortal());
+    const sheet = open && isNarrow();
+    $('panel').classList.toggle('is-open', open);
+    $('sheet-backdrop').hidden = !sheet;
+    document.body.classList.toggle('sheet-open', sheet);
+}
+
+// Drag the sheet down by its top edge to close it
+function initSheetGestures() {
+    const panel = $('panel');
+    let startY = null;
+    let dy = 0;
+    panel.addEventListener('touchstart', e => {
+        if (!isNarrow() || !panel.classList.contains('is-open')) return;
+        const top = panel.getBoundingClientRect().top;
+        if (e.touches[0].clientY - top > 72) return;   // only the handle / header area
+        startY = e.touches[0].clientY;
+        dy = 0;
+        panel.style.transition = 'none';
+    }, { passive: true });
+    panel.addEventListener('touchmove', e => {
+        if (startY === null) return;
+        dy = Math.max(0, e.touches[0].clientY - startY);
+        panel.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    panel.addEventListener('touchend', () => {
+        if (startY === null) return;
+        startY = null;
+        panel.style.transition = '';
+        panel.style.transform = '';
+        if (dy > 90) clearSelection();
+    });
+    $('sheet-backdrop').addEventListener('click', clearSelection);
+    window.matchMedia('(max-width: 1080px)').addEventListener('change', syncSheet);
+}
+
 function renderPanel() {
+    renderPanelContent();
+    syncSheet();
+}
+
+function renderPanelContent() {
     const panel = $('panel');
     const devSel = getDevPortal();
     if (devSel) {
@@ -791,12 +847,12 @@ function pushRow(cell) {
         : current ? `Receives alerts for ${escHtml(current)}`
             : 'Not receiving alerts';
     const label = here ? 'Stop' : current ? `Switch to ${escHtml(id)}` : 'Receive alerts here';
-    const title = here ? 'Stop showing this station’s alerts on this PC'
-        : current ? `This PC gets ${escHtml(current)}’s alerts. Switch it to ${escHtml(id)} instead`
-            : 'Show this station’s alerts as notifications on this PC';
+    const title = here ? `Stop showing this station’s alerts on this ${deviceWord()}`
+        : current ? `This ${deviceWord()} gets ${escHtml(current)}’s alerts. Switch it to ${escHtml(id)} instead`
+            : `Show this station’s alerts as notifications on this ${deviceWord()}`;
     return `
     <div class="info-row">
-        <div class="info-row-label">This PC</div>
+        <div class="info-row-label">This ${deviceWord() === 'PC' ? 'PC' : 'device'}</div>
         <div class="info-row-body">
             <div class="info-row-meta">${text}</div>
             <button id="panel-push" class="btn btn-sm ${here ? 'btn-muted' : 'btn-primary'} push-btn" type="button" title="${title}">
@@ -962,8 +1018,9 @@ async function sendDesktopAlert(cell) {
     } else {
         showToast('warn', `No PC receives ${id}'s alerts yet`);
     }
-    await getPushStatus(true);   // counts may have changed (expired PCs are removed)
+    await getPushStatus(true);   // counts may have changed (expired devices are removed)
     updateDesktopButton(cell);
+    updateWallState();
 }
 
 // ─── Push alerts: which PCs receive a station's alerts (server: api/) ────────
@@ -1097,10 +1154,11 @@ async function togglePushHere(cell) {
             }
             saveLocalPushStation(null);
             await getPushStatus(true);
-            showToast('info', `This PC no longer receives alerts for ${id}`);
+            updateWallState();
+            showToast('info', `This ${deviceWord()} no longer receives alerts for ${id}`);
         } catch (err) {
             console.error('[Push]', err);
-            showToast('error', 'Could not update this PC — see console');
+            showToast('error', `Could not update this ${deviceWord()} — see console`);
         }
         renderPanel();
         return;
@@ -1108,12 +1166,12 @@ async function togglePushHere(cell) {
 
     const permission = await ensureNotifyPermission();
     if (permission !== 'granted') {
-        showToast('warn', 'Allow notifications to receive alerts on this PC');
+        showToast('warn', `Allow notifications to receive alerts on this ${deviceWord()}`);
         return;
     }
     const cfg = await getPushConfig();
     if (!cfg.enabled) {
-        showToast('error', 'Alerts to PCs are not set up on the server yet');
+        showToast('error', 'Device alerts are not set up on the server yet');
         return;
     }
     try {
@@ -1121,12 +1179,13 @@ async function togglePushHere(cell) {
         await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() });
         saveLocalPushStation(id);
         await getPushStatus(true);
+        updateWallState();
         showToast('success', current
-            ? `This PC now receives alerts for ${id} only (moved from ${current})`
-            : `This PC now receives alerts for ${id}`);
+            ? `This ${deviceWord()} now receives alerts for ${id} only (moved from ${current})`
+            : `This ${deviceWord()} now receives alerts for ${id}`);
     } catch (err) {
         console.error('[Push]', err);
-        showToast('error', 'Could not register this PC — see console');
+        showToast('error', `Could not register this ${deviceWord()} — see console`);
     }
     renderPanel();
 }
@@ -1273,6 +1332,9 @@ const HELPER_DOWNLOAD = 'downloads/NEOC-Alert-Helper.exe';
 let helperState = null;   // null = not checked yet, true = running, false = not found
 
 const isWindows = () => /Windows/i.test(navigator.userAgent);
+const isMobileDevice = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const deviceWord = () => (isMobileDevice() ? 'device' : 'PC');
 
 async function pingHelper() {
     try {
@@ -1392,7 +1454,14 @@ function initPwa() {
         $('btn-install').hidden = true;
         showToast('success', 'Installed — open NEOC Dashboard from the Start menu or taskbar');
     });
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const iOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (iOS && !standalone) $('btn-install').hidden = false;
     $('btn-install').addEventListener('click', async () => {
+        if (iOS && !installPrompt) {
+            showToast('info', 'To install: tap the Share button, then “Add to Home Screen”');
+            return;
+        }
         if (!installPrompt) return;
         installPrompt.prompt();
         await installPrompt.userChoice;

@@ -2,7 +2,7 @@
 //                                                                  (and no other station's: one station per PC)
 // DELETE /api/push-subscribe { endpoint }                         → this PC stops receiving alerts
 
-import { redis, pushReady, isStationId, stationKey, clean, removeFromStations, MAX_PCS_PER_STATION } from './_push.js';
+import { redis, pushReady, isStationId, stationKey, clean, removeFromStations, syncCounts, MAX_PCS_PER_STATION } from './_push.js';
 
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
@@ -30,6 +30,7 @@ export default async function handler(req, res) {
             };
             await redis.hset(key, { [sub.endpoint]: JSON.stringify(record) });
             const movedFrom = await removeFromStations(sub.endpoint, body.stationId);
+            await syncCounts([body.stationId, ...movedFrom]);
             return res.status(200).json({ ok: true, stationId: body.stationId, movedFrom });
         }
 
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
                 return res.status(400).json({ error: 'Missing endpoint' });
             }
             const removedFrom = await removeFromStations(body.endpoint);
+            await syncCounts(removedFrom);
             return res.status(200).json({ ok: true, removedFrom });
         }
 

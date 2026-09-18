@@ -198,6 +198,9 @@ code {
     align-items: center;
     gap: var(--sp-4);
     padding: var(--sp-3) var(--sp-6);
+    padding-top: calc(var(--sp-3) + env(safe-area-inset-top, 0px));
+    padding-left: calc(var(--sp-6) + env(safe-area-inset-left, 0px));
+    padding-right: calc(var(--sp-6) + env(safe-area-inset-right, 0px));
     background: var(--elevated);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -762,6 +765,36 @@ code {
 
 .cell:hover {
     border-color: var(--block);
+}
+
+/* Bell: this station's alerts reach at least one device */
+.cell {
+    position: relative;
+}
+
+.cell.has-alerts {
+    overflow: visible;
+}
+
+/* Round badge on the cell's top-right corner */
+.cell-bell {
+    display: none;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    z-index: 1;
+    width: 15px;
+    height: 15px;
+    border-radius: var(--r-full);
+    background: var(--warn);
+    color: #ffffff;
+    box-shadow: 0 0 0 2px var(--elevated);
+    align-items: center;
+    justify-content: center;
+}
+
+.cell.has-alerts .cell-bell {
+    display: flex;
 }
 
 .cell-num {
@@ -1678,6 +1711,7 @@ code {
     align-items: center;
     gap: var(--sp-4);
     padding: var(--sp-2) var(--sp-6);
+    padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom, 0px));
     background: var(--elevated);
     border-top: 1px solid var(--border);
     font-size: var(--fs-xs);
@@ -1976,19 +2010,77 @@ code {
         overflow: visible;
     }
 
+    /* Side panel → bottom sheet that slides up when a station or portal is selected */
     .panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 900;
         width: auto;
-        border-left: 0;
-        border-top: 1px solid var(--border);
+        max-width: 720px;
+        margin: 0 auto;
+        max-height: 88vh;
+        max-height: 88dvh;
+        border: 1px solid var(--border);
+        border-bottom: 0;
+        border-radius: var(--r-xl) var(--r-xl) 0 0;
+        box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.35);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        transform: translateY(105%);
+        visibility: hidden;
+        transition: transform 0.28s ease, visibility 0s linear 0.28s;
+    }
+
+    .panel.is-open {
+        transform: translateY(0);
+        visibility: visible;
+        transition: transform 0.28s ease;
+    }
+
+    /* Drag handle */
+    .panel::before {
+        content: '';
+        flex: none;
+        width: 40px;
+        height: 4px;
+        margin: var(--sp-2) auto 0;
+        border-radius: var(--r-full);
+        background: var(--muted-foreground);
+        opacity: 0.45;
     }
 
     .panel-body {
-        overflow: visible;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 890;
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    body.sheet-open {
+        overflow: hidden;
     }
 
     .statusbar {
         position: sticky;
         bottom: 0;
+    }
+
+    /* Wall: swipe between blocks */
+    .wall-scroll {
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .block {
+        scroll-snap-align: center;
     }
 }
 
@@ -1997,15 +2089,62 @@ code {
     .topbar {
         flex-wrap: wrap;
         padding: var(--sp-2) var(--sp-4);
+        padding-top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
+        padding-left: calc(var(--sp-4) + env(safe-area-inset-left, 0px));
+        padding-right: calc(var(--sp-4) + env(safe-area-inset-right, 0px));
         gap: var(--sp-2);
     }
 
     .brand {
-        flex: 1;
+        flex: 1 1 0;
+        min-width: 0;
+        gap: var(--sp-2);
+    }
+
+    .brand > :last-child {
+        min-width: 0;
+    }
+
+    .brand-mark {
+        width: 32px;
+        height: 32px;
+    }
+
+    .brand-title {
+        font-size: var(--fs-base);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .brand-sub {
         display: none;
+    }
+
+    .topbar-actions {
+        gap: 2px;
+    }
+
+    .topbar-actions .btn-label {
+        display: none;
+    }
+
+    .topbar-actions .btn,
+    .topbar-actions .icon-btn {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+    }
+
+    /* Bottom sheet fills the width on phones */
+    .panel {
+        max-width: none;
+        border-left: 0;
+        border-right: 0;
+    }
+
+    .foot-actions .btn {
+        min-height: 44px;
     }
 
     .topbar-search {

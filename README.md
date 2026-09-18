@@ -116,6 +116,10 @@ Edit `DEVELOPERS` in [js/developers.js](js/developers.js). The widget lists deve
 The dashboard is a **Progressive Web App**: in Chrome or Edge, click **Install app** in the top bar (or the install icon in the address bar) to install it as a desktop app with its own window, Start-menu entry and taskbar icon.
 
 - **Notifications:** click **Alerts** in the top bar to turn on desktop notifications. The first **Send Alert** also asks. Once allowed, every Send Alert shows a system notification in the Windows notification centre (green dot on Alerts = on).
+- **Phones & tablets:** the layout adapts: tapping a station or portal opens the side panel as a bottom sheet (drag down or tap outside to close), and the wall swipes between blocks.
+  - **Android (Chrome):** tap **Install** in the top bar or accept the install prompt.
+  - **iPhone / iPad (Safari):** tap **Share → Add to Home Screen** (the Install button explains this). Device alerts on iOS need iOS 16.4+ and the app opened from the Home Screen.
+- **Bell on the wall:** a small bell on a cell means that station's alerts reach at least one device.
 - **Offline:** the app keeps a copy of its files and opens without a connection (sending alerts still needs internet).
 - Needs `https` (Vercel) or `localhost`. Opening `index.html` as a file works, but without install or notifications.
 

@@ -1,7 +1,7 @@
 // POST /api/push-notify { stationId, pc, portal } → push the alert to every PC registered for the station
 // The message text is built here, so callers cannot push arbitrary content.
 
-import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean } from './_push.js';
+import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean, syncCounts } from './_push.js';
 
 const RATE_LIMIT = 10;   // alerts per station per minute
 
@@ -57,6 +57,7 @@ export default async function handler(req, res) {
         }));
 
         const tally = type => outcomes.filter(o => o === type).length;
+        if (tally('expired')) await syncCounts([stationId]);
         return res.status(200).json({
             total: outcomes.length,
             sent: tally('sent'),

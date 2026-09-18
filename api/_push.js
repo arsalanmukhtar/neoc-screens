@@ -35,6 +35,22 @@ export const stationKey = id => `push:station:${id}`;
 
 export const MAX_PCS_PER_STATION = 10;
 
+// Device count per station, kept in one hash so /api/push-status is a single read
+export const COUNTS_KEY = 'push:counts';
+
+export async function syncCounts(ids) {
+    const list = [...new Set(ids)].filter(Boolean);
+    if (!list.length) return;
+    const pipe = redis.pipeline();
+    list.forEach(id => pipe.hlen(stationKey(id)));
+    const lens = await pipe.exec();
+    const set = {};
+    const gone = [];
+    list.forEach((id, i) => { const n = Number(lens[i]) || 0; if (n > 0) set[id] = n; else gone.push(id); });
+    if (Object.keys(set).length) await redis.hset(COUNTS_KEY, set);
+    if (gone.length) await redis.hdel(COUNTS_KEY, ...gone);
+}
+
 // A PC receives alerts for ONE station: drop its subscription from every station except `keep`
 export async function removeFromStations(endpoint, keep = null) {
     const pipe = redis.pipeline();

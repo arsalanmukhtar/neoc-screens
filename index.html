@@ -12,6 +12,11 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="NEOC" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- Apply saved / system theme before first paint -->
     <script>
@@ -222,6 +227,9 @@
         </footer>
 
     </div>
+
+    <!-- Mobile: dims the page behind the side panel when it opens as a bottom sheet -->
+    <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
 
     <!-- ═══ INCOMING ALERT (desktop alert received on this PC) ══════════════ -->
     <div id="alert-overlay" class="alert-overlay" role="alertdialog" aria-modal="true"
