@@ -36,6 +36,8 @@ const ICONS = {
     'moon': '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     'layout-grid': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
     'archive': '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-10 4h4"/>',
+    'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+    'bell-off': '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>',
     'bell': '<path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
     'chevron-left': '<path d="m15 18-6-6 6-6"/>',
     'chevron-right': '<path d="m9 18 6-6-6-6"/>',
@@ -142,7 +144,7 @@ function plainText(html) {
 
 function matchesQuery(cell, q) {
     if (!q) return true;
-    return [cell.pcNumber, cell.user, developerName(cell), cell.ipAddress, cell.portalName,
+    return [cell.pcNumber, cell.user, developerName(cell), cell.ipAddress, cell.portalName, cell.category,
         cell.portalNumber, cell.cellLabel, plainText(cell.portalDescription)]
         .join(' ').toLowerCase().includes(q);
 }
@@ -215,6 +217,7 @@ function resolveDevPortal(devId, p, i) {
     return {
         id: p.id || `${devId}-${i + 1}`,
         name: p.name || (cell ? cell.portalName : 'Untitled portal'),
+        category: p.category || (cell ? cell.category : ''),
         wall: hit ? displayNumber(cell) : '',
         cell,
         gridId: hit ? hit.cfg.id : null,
@@ -273,7 +276,7 @@ const initials = name => {
 };
 
 const portalMatches = (p, q) =>
-    [p.name, p.wall, p.stack, DEV_STATUS[p.status]].join(' ').toLowerCase().includes(q);
+    [p.name, p.wall, p.category, p.stack, DEV_STATUS[p.status]].join(' ').toLowerCase().includes(q);
 
 const devNameMatches = (d, q) => [d.name, d.role].join(' ').toLowerCase().includes(q);
 
@@ -366,6 +369,7 @@ function renderDevPortalPanel(panel, { dev, portal: p }) {
         ? `${escHtml((ACCESS_TYPES[p.serverType] || { label: p.serverType || 'Server' }).label)}${p.port ? ` · Port ${escHtml(p.port)}` : ''}`
         : '';
     const details = [
+        p.category && kv('Category', escHtml(p.category)),
         p.stack && kv('Stack', escHtml(p.stack)),
         p.projectDir && kv('Folder', escHtml(p.projectDir)),
         server && kv('Server', `<span class="type-badge" data-type="${escHtml(p.serverType)}">${server}</span>`),
@@ -467,6 +471,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPanel();
     renderStatusBar();
     attachListeners();
+    initPwa();
+    refreshPushRegistrations();
     tickClock();
     setInterval(tickClock, 1000);
 });
@@ -477,6 +483,8 @@ function applyTheme(theme, persist = true) {
     root.classList.add('theme-switching');
     root.setAttribute('data-theme', theme);
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
+    const bar = document.querySelector('meta[name="theme-color"]');
+    if (bar) bar.content = getComputedStyle(root).getPropertyValue('--elevated').trim() || '#ffffff';
     const btn = $('btn-theme');
     const next = theme === 'dark' ? 'light' : 'dark';
     btn.innerHTML = ic(theme === 'dark' ? 'sun' : 'moon');
@@ -713,7 +721,6 @@ function renderPanel() {
 
     const body = state.panelTab === 'description' ? panelDescriptionTab(cell) : panelOverviewTab(cell);
 
-    const alertAttrs = cell.mail ? '' : 'disabled title="No email on file for this operator"';
 
     panel.innerHTML = `
     <div class="panel-head">
@@ -730,7 +737,7 @@ function renderPanel() {
     <div class="panel-tabs" role="tablist">${tabs}</div>
     <div class="panel-body" role="tabpanel">${body}</div>
     <div class="panel-foot">
-        <button id="panel-alert" class="btn btn-danger btn-lg" type="button" ${alertAttrs}>${ic('mail', 15)}Send Alert</button>
+        <button id="panel-alert" class="btn btn-danger btn-lg" type="button">${ic('mail', 15)}Send Alert</button>
     </div>`;
 }
 
@@ -753,11 +760,30 @@ function serverBadge(access) {
     return `<span class="type-badge" data-type="${escHtml(access.type)}">${text}</span>`;
 }
 
+// Whether this PC receives the station's alerts as system notifications
+function pushRow(cell) {
+    if (!pushSupported()) return '';
+    const on = localPushStations().includes(displayNumber(cell));
+    return `
+    <div class="info-row">
+        <div class="info-row-label">This PC</div>
+        <div class="info-row-body">
+            <div class="info-row-meta">${on ? 'Receives this station’s alerts' : 'Not receiving alerts'}</div>
+            <button id="panel-push" class="btn btn-sm ${on ? 'btn-muted' : 'btn-primary'} push-btn" type="button"
+                title="${on ? 'Stop showing this station’s alerts on this PC' : 'Show this station’s alerts as notifications on this PC'}">
+                ${ic(on ? 'bell-off' : 'bell', 13)}${on ? 'Stop' : 'Receive alerts here'}
+            </button>
+        </div>
+    </div>`;
+}
+
 function panelOverviewTab(cell) {
     return `
     <div class="info-rows">
+        ${infoRow('Category', cell.category)}
         ${infoRow('Operator', cell.user, cell.mail || 'No email on file')}
         ${infoRow('Network', cell.ipAddress, '', serverBadge(accessInfo(cell)))}
+        ${pushRow(cell)}
     </div>
     <div>
         <div class="section-label">Portal access</div>
@@ -808,52 +834,198 @@ function accessSection(cell) {
     </div>`;
 }
 
-// ─── Send Alert Email ─────────────────────────────────────────────────────────
-async function sendAlertEmail(cell, gridId) {
+// ─── Send Alert (email + push to the station's PCs) ──────────────────────────
+async function sendAlert(cell, gridId) {
+    // Ask for notification permission while we still have the click (browsers require a user gesture)
+    const permission = ensureNotifyPermission();
     const toEmail = cell.mail;
     const toName = cell.user;
-    if (!toEmail) {
-        showToast('warn', `No email set for ${cell.pcNumber}`);
-        return;
-    }
-    if (typeof emailjs === 'undefined') {
-        showToast('error', 'Email service unavailable — check the internet connection');
-        return;
-    }
     const timestamp = new Date().toLocaleString('en-US', { hour12: false });
     const alertBtn = $('panel-alert');
     const setBusy = busy => {
         if (!alertBtn) return;
         alertBtn.disabled = busy;
-        alertBtn.innerHTML = `${ic('mail', 15)}${busy ? 'Sending…' : 'Send Alert'}`;
+        alertBtn.setAttribute('aria-busy', String(busy));
+        alertBtn.innerHTML = busy
+            ? '<span class="spinner" aria-hidden="true"></span>Sending'
+            : `${ic('mail', 15)}Send Alert`;
     };
 
-    setBusy(true);
-    try {
-        await emailjs.send(
-            EJS_SERVICE_ID,
-            EJS_TEMPLATE_ID,
-            {
-                to_email: toEmail,
-                to_name: toName,
-                message: `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
-                pc_number: cell.pcNumber,
-                portal: cell.portalName,
-                subgrid: gridId,
-                ip_address: cell.ipAddress,
-                timestamp: timestamp,
-            },
-            EJS_PUBLIC_KEY
-        );
+    let emailTask = Promise.resolve(null);   // null = no email on file
+    if (toEmail) {
+        emailTask = typeof emailjs === 'undefined'
+            ? Promise.reject(new Error('Email service unavailable'))
+            : emailjs.send(
+                EJS_SERVICE_ID,
+                EJS_TEMPLATE_ID,
+                {
+                    to_email: toEmail,
+                    to_name: toName,
+                    message: `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
+                    pc_number: cell.pcNumber,
+                    portal: cell.portalName,
+                    subgrid: gridId,
+                    ip_address: cell.ipAddress,
+                    timestamp: timestamp,
+                },
+                EJS_PUBLIC_KEY
+            );
+    }
 
-        console.log(`[Alert] SUCCESS | ${toName} <${toEmail}> | ${timestamp}`);
-        showToast('success', `Alert sent to ${toName}`);
+    setBusy(true);
+    const [email, push] = await Promise.allSettled([emailTask, pushAlert(cell)]);
+    if ($('panel-alert') === alertBtn) setBusy(false);   // the panel may show another station by now
+
+    const emailed = email.status === 'fulfilled' && email.value !== null;
+    const emailFailed = email.status === 'rejected';
+    const pcs = push.status === 'fulfilled' && push.value ? push.value.sent : 0;
+    const via = [emailed && 'email', pcs && `${pcs} PC${pcs === 1 ? '' : 's'}`].filter(Boolean).join(' + ');
+
+    if (emailFailed) console.error(`[Alert] EMAIL FAILED | ${toName} <${toEmail}> | ${timestamp} |`, email.reason);
+    console.log(`[Alert] ${cell.pcNumber} | email: ${emailed ? 'sent' : emailFailed ? 'failed' : 'none'} | PCs: ${pcs} | ${timestamp}`);
+
+    if (!via) {
+        if (emailFailed) showToast('error', 'Send failed — see console');
+        else showToast('warn', `No email or alert PC set up for ${cell.pcNumber}`);
+    } else if (emailFailed) {
+        showToast('warn', `Alert reached ${via}, but the email failed`);
+    } else {
+        showToast('success', `Alert sent to ${toName} · ${via}`);
+    }
+
+    permission.then(() => via
+        ? notifyDesktop('Alert sent', `${toName} (${cell.pcNumber}) was asked to return to their workstation · ${via}.`, `alert-${cell.id}`)
+        : notifyDesktop('Alert not sent', `The alert to ${toName} (${cell.pcNumber}) could not be delivered.`, `alert-${cell.id}`));
+}
+
+// ─── Push alerts: which PCs receive a station's alerts (server: api/) ────────
+const PUSH_STORE = 'ndma_push_stations';   // stations this browser receives alerts for
+let pushConfigPromise = null;
+
+const pushSupported = () => window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window;
+
+function localPushStations() {
+    try {
+        const list = JSON.parse(localStorage.getItem(PUSH_STORE));
+        return Array.isArray(list) ? list : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveLocalPushStations(list) {
+    try { localStorage.setItem(PUSH_STORE, JSON.stringify(list)); } catch (e) { /* storage unavailable */ }
+}
+
+function getPushConfig() {
+    if (!pushConfigPromise) {
+        pushConfigPromise = fetch('api/push-config', { cache: 'no-store' })
+            .then(r => (r.ok ? r.json() : { enabled: false }))
+            .catch(() => ({ enabled: false }));
+    }
+    return pushConfigPromise;
+}
+
+function base64UrlToBytes(b64) {
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, ch => ch.charCodeAt(0));
+}
+
+async function currentSubscription(publicKey, create) {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing || !create) return existing;
+    return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) });
+}
+
+async function pushApi(method, body) {
+    const res = await fetch('api/push-subscribe', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${(await res.json().catch(() => ({}))).error || ''}`.trim());
+}
+
+const pcLabel = () => `${navigator.userAgentData?.platform || navigator.platform || 'PC'} · ${new Date().toLocaleDateString('en-GB')}`;
+
+// Send the alert to every PC registered for this station. Resolves null when push isn't available.
+async function pushAlert(cell) {
+    if (!window.isSecureContext) return null;
+    const cfg = await getPushConfig();
+    if (!cfg.enabled) return null;
+    try {
+        const res = await fetch('api/push-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stationId: displayNumber(cell), pc: cell.pcNumber, portal: cell.portalName }),
+        });
+        if (!res.ok) {
+            console.warn('[Push] notify', res.status, await res.text());
+            return null;
+        }
+        return await res.json();
     } catch (err) {
-        console.error(`[Alert] FAILED | ${toName} <${toEmail}> | ${timestamp} |`, err);
-        showToast('error', 'Send failed — see console');
-    } finally {
-        // The panel may have been re-rendered for another station meanwhile
-        if ($('panel-alert') === alertBtn) setBusy(false);
+        console.warn('[Push] notify', err);
+        return null;
+    }
+}
+
+// "Receive alerts here" in the side panel: this PC gets the station's alerts as system notifications
+async function togglePushHere(cell) {
+    const id = displayNumber(cell);
+    const list = localPushStations();
+
+    if (list.includes(id)) {
+        try {
+            const sub = await currentSubscription('', false);
+            if (sub) await pushApi('DELETE', { stationId: id, endpoint: sub.endpoint });
+            const rest = list.filter(s => s !== id);
+            saveLocalPushStations(rest);
+            if (sub && !rest.length) await sub.unsubscribe();
+            showToast('info', `This PC no longer receives alerts for ${id}`);
+        } catch (err) {
+            console.error('[Push]', err);
+            showToast('error', 'Could not update this PC — see console');
+        }
+        renderPanel();
+        return;
+    }
+
+    const permission = await ensureNotifyPermission();
+    if (permission !== 'granted') {
+        showToast('warn', 'Allow notifications to receive alerts on this PC');
+        return;
+    }
+    const cfg = await getPushConfig();
+    if (!cfg.enabled) {
+        showToast('error', 'Alerts to PCs are not set up on the server yet');
+        return;
+    }
+    try {
+        const sub = await currentSubscription(cfg.publicKey, true);
+        await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() });
+        saveLocalPushStations([...list, id]);
+        showToast('success', `This PC will now receive alerts for ${id}`);
+    } catch (err) {
+        console.error('[Push]', err);
+        showToast('error', 'Could not register this PC — see console');
+    }
+    renderPanel();
+}
+
+// On start-up, re-send this PC's registrations so the server always has its current subscription
+async function refreshPushRegistrations() {
+    const list = localPushStations();
+    if (!list.length || !pushSupported() || Notification.permission !== 'granted') return;
+    const cfg = await getPushConfig();
+    if (!cfg.enabled) return;
+    try {
+        const sub = await currentSubscription(cfg.publicKey, true);
+        await Promise.all(list.map(id => pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() })));
+    } catch (err) {
+        console.warn('[Push] refresh', err);
     }
 }
 
@@ -902,13 +1074,106 @@ function tickClock() {
 const TOAST_ICONS = { success: 'check-circle', error: 'alert-circle', warn: 'alert-triangle', info: 'info' };
 let toastTimer;
 
+const TOAST_MS = 5000;
+
 function showToast(type, msg) {
     const toast = $('toast');
     $('toast-icon').innerHTML = svgIcon(TOAST_ICONS[type] || 'info', 16);
     $('toast-msg').textContent = msg;
-    toast.className = `toast ${type} show`;
+    toast.className = `toast ${type}`;
+    void toast.offsetWidth;                 // restart the entry animation
+    toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), TOAST_MS);
+}
+
+// ─── Desktop notifications (Windows notification centre, macOS, …) ───────────
+const canNotify = () => 'Notification' in window;
+
+function ensureNotifyPermission() {
+    if (!canNotify()) return Promise.resolve('unsupported');
+    if (Notification.permission !== 'default') return Promise.resolve(Notification.permission);
+    return Promise.resolve(Notification.requestPermission())
+        .catch(() => Notification.permission)
+        .then(result => { updateAlertsButton(); return result; });
+}
+
+async function notifyDesktop(title, body, tag) {
+    if (!canNotify() || Notification.permission !== 'granted') return;
+    const options = { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' };
+    try {
+        const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+        if (reg) await reg.showNotification(title, options);
+        else new Notification(title, options);
+    } catch (err) {
+        console.warn('[Notify]', err);
+    }
+}
+
+function notifyState() {
+    return canNotify() ? Notification.permission : 'unsupported';
+}
+
+function updateAlertsButton() {
+    const btn = $('btn-alerts');
+    const st = notifyState();
+    btn.dataset.state = st;
+    btn.title = {
+        granted: 'Desktop notifications are on',
+        denied: 'Desktop notifications are blocked',
+        default: 'Turn on desktop notifications',
+        unsupported: 'Desktop notifications are not supported here',
+    }[st];
+    btn.querySelector('[data-icon], svg')?.replaceWith(
+        document.createRange().createContextualFragment(ic(st === 'denied' ? 'bell-off' : 'bell', 14)));
+}
+
+async function onAlertsClick() {
+    const st = notifyState();
+    if (st === 'unsupported') {
+        showToast('warn', 'This browser does not support desktop notifications');
+    } else if (st === 'denied') {
+        showToast('warn', 'Notifications are blocked — allow them from the lock icon in the address bar');
+    } else if (st === 'granted') {
+        showToast('success', 'Desktop notifications are on — sent a test notification');
+        notifyDesktop('Notifications are on', 'You will be notified here when an alert is sent.', 'test');
+    } else {
+        const result = await ensureNotifyPermission();
+        if (result === 'granted') {
+            showToast('success', 'Desktop notifications turned on');
+            notifyDesktop('Notifications are on', 'You will be notified here when an alert is sent.', 'test');
+        } else {
+            showToast('warn', 'Notifications were not allowed');
+        }
+    }
+}
+
+// ─── Installable app (service worker + install button) ───────────────────────
+let installPrompt = null;
+
+function initPwa() {
+    const secure = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+    if ('serviceWorker' in navigator && secure) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('[SW]', err));
+    }
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        installPrompt = e;
+        $('btn-install').hidden = false;
+    });
+    window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        $('btn-install').hidden = true;
+        showToast('success', 'Installed — open NEOC Dashboard from the Start menu or taskbar');
+    });
+    $('btn-install').addEventListener('click', async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        await installPrompt.userChoice;
+        installPrompt = null;
+        $('btn-install').hidden = true;
+    });
+    updateAlertsButton();
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -927,8 +1192,7 @@ function attachListeners() {
     $('btn-theme').addEventListener('click', toggleTheme);
     $('btn-wall').addEventListener('click', () => setView('wall'));
     $('btn-archive').addEventListener('click', () => setView(state.view === 'archive' ? 'wall' : 'archive'));
-    $('btn-alerts').addEventListener('click', () =>
-        showToast('info', 'Select a station, then use Send Alert in the side panel'));
+    $('btn-alerts').addEventListener('click', onAlertsClick);
 
     $('search-input').addEventListener('input', e => {
         handleSearch(e.target.value);
@@ -1042,7 +1306,12 @@ function attachListeners() {
         }
         if (e.target.closest('#panel-alert')) {
             const sel = getSelected();
-            if (sel) sendAlertEmail(sel.cell, sel.cfg.id);
+            if (sel) sendAlert(sel.cell, sel.cfg.id);
+            return;
+        }
+        if (e.target.closest('#panel-push')) {
+            const sel = getSelected();
+            if (sel) togglePushHere(sel.cell);
         }
     });
 

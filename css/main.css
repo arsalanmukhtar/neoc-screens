@@ -1274,6 +1274,18 @@ code {
     flex-wrap: wrap;
 }
 
+.btn-sm {
+    height: 28px;
+    padding: 0 var(--sp-2-5);
+    gap: var(--sp-1-5);
+    font-size: var(--fs-xs);
+}
+
+/* "This PC" row: button at the right edge */
+.push-btn {
+    margin-left: auto;
+}
+
 /* Server badge on the Network row sits at the right edge */
 .info-row-body .type-badge {
     margin-left: auto;
@@ -1696,40 +1708,80 @@ code {
 
 /* ─── Toast ───────────────────────────────────────────── */
 .toast {
+    --toast-accent: var(--primary);
     position: fixed;
-    right: var(--sp-6);
-    bottom: calc(var(--sp-8) + 16px);
+    top: calc(env(safe-area-inset-top, 0px) + var(--sp-4));
+    left: 50%;
     z-index: 1000;
-    max-width: 340px;
+    width: max-content;
+    max-width: min(440px, calc(100vw - 32px));
     display: flex;
     align-items: center;
     gap: var(--sp-2);
     padding: var(--sp-3) var(--sp-4);
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--primary);
+    background: var(--toast-accent);   /* solid colour, white text */
+    color: #ffffff;
     border-radius: var(--r-md);
     box-shadow: var(--shadow-md);
     font-size: var(--fs-sm);
-    font-weight: var(--fw-medium);
+    font-weight: var(--fw-semibold);
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate(-50%, -12px);
     pointer-events: none;
     transition: opacity var(--t-base), transform var(--t-base);
 }
 
 .toast.show {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
+    pointer-events: auto;
 }
 
-.toast.success { border-left-color: var(--success); }
-.toast.success .toast-icon { color: var(--success-text); }
-.toast.error { border-left-color: var(--danger); }
-.toast.error .toast-icon { color: var(--danger-text); }
-.toast.warn { border-left-color: var(--warn); }
-.toast.warn .toast-icon { color: var(--warn-text); }
-.toast.info .toast-icon { color: var(--primary-text); }
+.toast-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.toast.success { --toast-accent: var(--toast-success); }
+.toast.error { --toast-accent: var(--toast-error); }
+.toast.warn { --toast-accent: var(--toast-warn); }
+
+/* Loading spinner (Send Alert while sending) */
+.spinner {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: var(--r-full);
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn[aria-busy="true"] {
+    opacity: 1;
+    cursor: progress;
+}
+
+/* Alerts button: green dot when desktop notifications are on */
+#btn-alerts {
+    position: relative;
+}
+
+#btn-alerts[data-state="granted"]::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--r-full);
+    background: var(--toast-success);
+    box-shadow: 0 0 0 2px var(--ink);
+}
 
 /* ─── Responsive ──────────────────────────────────────── */
 @media (max-width: 1400px) {

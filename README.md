@@ -69,9 +69,10 @@ Each station supports these fields:
     mail: 'name@example.com',    // recipient for "Send Alert" (optional)
     ip: '1.112',                 // last two octets → 172.18.1.112
     portal: 'Portal Name',
+    category: 'Hydromet',        // portal category (optional)
     desc: '<p>…</p>',            // Description tab — basic HTML allowed (see top of data.js)
     portalPort: '5500',          // Portal Access section (all optional)
-    portalPath: 'app/index.html',
+    portalPath: 'app/index.html#/map',   // everything after the port: folders, page and route
     serverType: 'vscode',        // 'vscode' | 'npm' | 'browser' | ''
     projectDir: 'D:\\Portals\\App',
 }
@@ -99,7 +100,7 @@ Edit `DEVELOPERS` in [js/developers.js](js/developers.js). The widget lists deve
     role: 'GIS Developer',            // optional
     email: 'name@example.com',        // optional — enables "Email"
     portals: [
-        { wall: 'G-7', stack: 'Node.js · React', updated: '2026-07' },   // on the wall: details come from data.js
+        { wall: 'G-7', stack: 'Node.js + React', updated: '2026-07' },   // on the wall: details come from data.js
         { name: 'Off-wall Portal', status: 'development',                // not on the wall
           description: '…', stack: '…', projectDir: 'D:\\Portals\\X', url: '', updated: '2026-09' },
     ],
@@ -107,6 +108,33 @@ Edit `DEVELOPERS` in [js/developers.js](js/developers.js). The widget lists deve
 ```
 
 `status` is `live`, `development` or `archived`. A wall station's **Developer** on its card is taken from here unless the station sets `developer` in `data.js`.
+
+---
+
+## Desktop App & Notifications
+
+The dashboard is a **Progressive Web App**: in Chrome or Edge, click **Install app** in the top bar (or the install icon in the address bar) to install it as a desktop app with its own window, Start-menu entry and taskbar icon.
+
+- **Notifications:** click **Alerts** in the top bar to turn on desktop notifications. The first **Send Alert** also asks. Once allowed, every Send Alert shows a system notification in the Windows notification centre (green dot on Alerts = on).
+- **Offline:** the app keeps a copy of its files and opens without a connection (sending alerts still needs internet).
+- Needs `https` (Vercel) or `localhost`. Opening `index.html` as a file works, but without install or notifications.
+
+Files: `manifest.webmanifest`, `sw.js` (service worker) and `icons/`.
+
+### Alerts on the operator's PC (push)
+
+**Send Alert** emails the operator and also pushes a Windows notification to every PC registered for that station. The notification stays on screen until dismissed.
+
+**Register a PC:** on the operator's PC, open the dashboard (or the installed app), select their station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.
+
+**One-time server setup (Vercel):**
+1. Vercel project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) → connect it to this project. This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+2. Vercel project → **Settings → Environment Variables**: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (`mailto:` + a contact email). Generate the keys with `npx web-push generate-vapid-keys`; keep the private key secret.
+3. **Redeploy.** `https://<site>/api/push-config` should then show `"enabled": true`.
+
+Until this is done, Send Alert keeps working by email only.
+
+Server code: `api/` (Vercel functions) and `package.json`. Notifications only arrive while Edge/Chrome is running (it can run in the background).
 
 ---
 

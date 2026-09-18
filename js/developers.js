@@ -12,8 +12,8 @@
 //
 // Portal example
 //   portals: [
-//       { wall: 'G-7', stack: 'Node.js · React', updated: '2026-07' },
-//       { name: 'Glacier Lake Inventory', status: 'development', stack: 'Python · PostGIS' },
+//       { wall: 'G-7', stack: 'Node.js + React', updated: '2026-07' },
+//       { name: 'Glacier Lake Inventory', status: 'development', stack: 'Python + PostGIS' },
 //   ]
 //
 // Portal fields
@@ -22,7 +22,8 @@
 //              from js/data.js — anything set here overrides them.
 //   name       Required for portals that are NOT on the wall
 //   status     'live' | 'development' | 'archived'   (default: live if on the wall)
-//   description, stack, projectDir, url, serverType ('vscode' | 'npm' | 'browser'),
+//   category, description, stack ('Vue + Chart.js'), projectDir, url,
+//   serverType ('vscode' | 'npm' | 'browser'),
 //   port, updated (free text, e.g. '2026-08')        — all optional
 //
 // A wall station's "Developer" on its card comes from here unless the station
