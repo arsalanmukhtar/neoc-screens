@@ -1,18 +1,19 @@
 // POST   /api/push-subscribe { stationId, subscription, label }  → this PC receives the station's alerts
-// DELETE /api/push-subscribe { stationId, endpoint }              → stop
+//                                                                  (and no other station's: one station per PC)
+// DELETE /api/push-subscribe { endpoint }                         → this PC stops receiving alerts
 
-import { redis, pushReady, isStationId, stationKey, clean, MAX_PCS_PER_STATION } from './_push.js';
+import { redis, pushReady, isStationId, stationKey, clean, removeFromStations, MAX_PCS_PER_STATION } from './_push.js';
 
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     if (!pushReady) return res.status(503).json({ error: 'Push alerts are not configured on the server' });
 
     const body = req.body || {};
-    if (!isStationId(body.stationId)) return res.status(400).json({ error: 'Unknown station' });
-    const key = stationKey(body.stationId);
 
     try {
         if (req.method === 'POST') {
+            if (!isStationId(body.stationId)) return res.status(400).json({ error: 'Unknown station' });
+            const key = stationKey(body.stationId);
             const sub = body.subscription || {};
             const valid = typeof sub.endpoint === 'string' && sub.endpoint.startsWith('https://')
                 && sub.keys && typeof sub.keys.p256dh === 'string' && typeof sub.keys.auth === 'string';
@@ -28,13 +29,16 @@ export default async function handler(req, res) {
                 at: new Date().toISOString(),
             };
             await redis.hset(key, { [sub.endpoint]: JSON.stringify(record) });
-            return res.status(200).json({ ok: true });
+            const movedFrom = await removeFromStations(sub.endpoint, body.stationId);
+            return res.status(200).json({ ok: true, stationId: body.stationId, movedFrom });
         }
 
         if (req.method === 'DELETE') {
-            if (typeof body.endpoint !== 'string') return res.status(400).json({ error: 'Missing endpoint' });
-            await redis.hdel(key, body.endpoint);
-            return res.status(200).json({ ok: true });
+            if (typeof body.endpoint !== 'string' || !body.endpoint.startsWith('https://')) {
+                return res.status(400).json({ error: 'Missing endpoint' });
+            }
+            const removedFrom = await removeFromStations(body.endpoint);
+            return res.status(200).json({ ok: true, removedFrom });
         }
 
         res.setHeader('Allow', 'POST, DELETE');

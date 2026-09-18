@@ -22,13 +22,26 @@ if (pushReady) {
 }
 export { webpush };
 
-// Wall portal numbers: G-1…G-22, N-1…N-22, GCOP, NCOP
-export const isStationId = id => /^(?:[GN]-\d{1,2}|GCOP|NCOP)$/.test(String(id || ''));
+// Wall portal numbers: G-1…G-22, GCOP, NCOP, N-1…N-22
+export const STATION_IDS = [
+    ...Array.from({ length: 22 }, (_, i) => `G-${i + 1}`),
+    'GCOP', 'NCOP',
+    ...Array.from({ length: 22 }, (_, i) => `N-${i + 1}`),
+];
+export const isStationId = id => STATION_IDS.includes(String(id || ''));
 
 // One Redis hash per station: field = subscription endpoint, value = { subscription, label, at }
 export const stationKey = id => `push:station:${id}`;
 
 export const MAX_PCS_PER_STATION = 10;
+
+// A PC receives alerts for ONE station: drop its subscription from every station except `keep`
+export async function removeFromStations(endpoint, keep = null) {
+    const pipe = redis.pipeline();
+    STATION_IDS.filter(id => id !== keep).forEach(id => pipe.hdel(stationKey(id), endpoint));
+    const removed = await pipe.exec();
+    return STATION_IDS.filter(id => id !== keep).filter((_, i) => Number(removed[i]) > 0);
+}
 
 export function parseRecord(value) {
     if (!value) return null;

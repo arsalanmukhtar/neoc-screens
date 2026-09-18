@@ -736,9 +736,29 @@ function renderPanel() {
     </div>
     <div class="panel-tabs" role="tablist">${tabs}</div>
     <div class="panel-body" role="tabpanel">${body}</div>
-    <div class="panel-foot">
-        <button id="panel-alert" class="btn btn-danger btn-lg" type="button">${ic('mail', 15)}Send Alert</button>
+    <div class="panel-foot panel-foot-alerts">
+        <div class="foot-label">Send alert</div>
+        <div class="foot-actions">${desktopAlertButton(cell)}${mailAlertButton(cell)}</div>
     </div>`;
+    updateDesktopButton(cell);
+}
+
+// Desktop: push notification to the PC(s) registered for this station
+function desktopAlertButton(cell) {
+    const id = displayNumber(cell);
+    const known = pushStatusValue;
+    const n = known && known.stations ? known.stations[id] || 0 : null;
+    const off = known && (!known.enabled || !n);
+    return `<button id="panel-alert-desktop" class="btn btn-danger btn-lg" type="button" data-station="${escHtml(id)}"
+        ${off ? 'disabled' : ''} title="${escHtml(desktopAlertTitle(id, known, n))}">${ic('monitor', 15)}Desktop</button>`;
+}
+
+// Mail: email to the operator
+function mailAlertButton(cell) {
+    const attrs = cell.mail
+        ? `title="Email ${escHtml(cell.user)} at ${escHtml(cell.mail)}"`
+        : 'disabled title="No email on file for this operator"';
+    return `<button id="panel-alert-mail" class="btn btn-danger btn-lg" type="button" ${attrs}>${ic('mail', 15)}Mail</button>`;
 }
 
 // One labelled row: label on the left, value (+ optional meta text / extra HTML) on the right
@@ -760,18 +780,26 @@ function serverBadge(access) {
     return `<span class="type-badge" data-type="${escHtml(access.type)}">${text}</span>`;
 }
 
-// Whether this PC receives the station's alerts as system notifications
+// Which station this PC receives alerts for (one station per PC)
 function pushRow(cell) {
     if (!pushSupported()) return '';
-    const on = localPushStations().includes(displayNumber(cell));
+    const id = displayNumber(cell);
+    const current = localPushStation();
+    const here = current === id;
+    const text = here ? 'Receives this station’s alerts'
+        : current ? `Receives alerts for ${escHtml(current)}`
+            : 'Not receiving alerts';
+    const label = here ? 'Stop' : current ? `Switch to ${escHtml(id)}` : 'Receive alerts here';
+    const title = here ? 'Stop showing this station’s alerts on this PC'
+        : current ? `This PC gets ${escHtml(current)}’s alerts. Switch it to ${escHtml(id)} instead`
+            : 'Show this station’s alerts as notifications on this PC';
     return `
     <div class="info-row">
         <div class="info-row-label">This PC</div>
         <div class="info-row-body">
-            <div class="info-row-meta">${on ? 'Receives this station’s alerts' : 'Not receiving alerts'}</div>
-            <button id="panel-push" class="btn btn-sm ${on ? 'btn-muted' : 'btn-primary'} push-btn" type="button"
-                title="${on ? 'Stop showing this station’s alerts on this PC' : 'Show this station’s alerts as notifications on this PC'}">
-                ${ic(on ? 'bell-off' : 'bell', 13)}${on ? 'Stop' : 'Receive alerts here'}
+            <div class="info-row-meta">${text}</div>
+            <button id="panel-push" class="btn btn-sm ${here ? 'btn-muted' : 'btn-primary'} push-btn" type="button" title="${title}">
+                ${ic(here ? 'bell-off' : 'bell', 13)}${label}
             </button>
         </div>
     </div>`;
@@ -834,87 +862,102 @@ function accessSection(cell) {
     </div>`;
 }
 
-// ─── Send Alert (email + push to the station's PCs) ──────────────────────────
-async function sendAlert(cell, gridId) {
-    // Ask for notification permission while we still have the click (browsers require a user gesture)
-    const permission = ensureNotifyPermission();
+// ─── Send alert: Desktop (push) and Mail (email) are separate buttons ────────
+function setAlertBusy(btn, busy, idleHTML) {
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.setAttribute('aria-busy', String(busy));
+    btn.innerHTML = busy ? '<span class="spinner" aria-hidden="true"></span>Sending' : idleHTML;
+}
+
+async function sendMailAlert(cell, gridId) {
     const toEmail = cell.mail;
     const toName = cell.user;
+    if (!toEmail) {
+        showToast('warn', `No email set for ${cell.pcNumber}`);
+        return;
+    }
+    if (typeof emailjs === 'undefined') {
+        showToast('error', 'Email service unavailable — check the internet connection');
+        return;
+    }
     const timestamp = new Date().toLocaleString('en-US', { hour12: false });
-    const alertBtn = $('panel-alert');
-    const setBusy = busy => {
-        if (!alertBtn) return;
-        alertBtn.disabled = busy;
-        alertBtn.setAttribute('aria-busy', String(busy));
-        alertBtn.innerHTML = busy
-            ? '<span class="spinner" aria-hidden="true"></span>Sending'
-            : `${ic('mail', 15)}Send Alert`;
-    };
-
-    let emailTask = Promise.resolve(null);   // null = no email on file
-    if (toEmail) {
-        emailTask = typeof emailjs === 'undefined'
-            ? Promise.reject(new Error('Email service unavailable'))
-            : emailjs.send(
-                EJS_SERVICE_ID,
-                EJS_TEMPLATE_ID,
-                {
-                    to_email: toEmail,
-                    to_name: toName,
-                    message: `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
-                    pc_number: cell.pcNumber,
-                    portal: cell.portalName,
-                    subgrid: gridId,
-                    ip_address: cell.ipAddress,
-                    timestamp: timestamp,
-                },
-                EJS_PUBLIC_KEY
-            );
+    const btn = $('panel-alert-mail');
+    const idle = `${ic('mail', 15)}Mail`;
+    setAlertBusy(btn, true, idle);
+    try {
+        await emailjs.send(
+            EJS_SERVICE_ID,
+            EJS_TEMPLATE_ID,
+            {
+                to_email: toEmail,
+                to_name: toName,
+                message: `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
+                pc_number: cell.pcNumber,
+                portal: cell.portalName,
+                subgrid: gridId,
+                ip_address: cell.ipAddress,
+                timestamp: timestamp,
+            },
+            EJS_PUBLIC_KEY
+        );
+        console.log(`[Alert] MAIL SENT | ${toName} <${toEmail}> | ${timestamp}`);
+        showToast('success', `Mail alert sent to ${toName}`);
+    } catch (err) {
+        console.error(`[Alert] MAIL FAILED | ${toName} <${toEmail}> | ${timestamp} |`, err);
+        showToast('error', 'Mail alert failed — see console');
+    } finally {
+        if ($('panel-alert-mail') === btn) setAlertBusy(btn, false, idle);   // the panel may show another station by now
     }
+}
 
-    setBusy(true);
-    const [email, push] = await Promise.allSettled([emailTask, pushAlert(cell)]);
-    if ($('panel-alert') === alertBtn) setBusy(false);   // the panel may show another station by now
+async function sendDesktopAlert(cell) {
+    const id = displayNumber(cell);
+    const btn = $('panel-alert-desktop');
+    const idle = `${ic('monitor', 15)}Desktop`;
+    setAlertBusy(btn, true, idle);
+    const result = await pushAlert(cell);
+    if ($('panel-alert-desktop') === btn) setAlertBusy(btn, false, idle);
 
-    const emailed = email.status === 'fulfilled' && email.value !== null;
-    const emailFailed = email.status === 'rejected';
-    const pcs = push.status === 'fulfilled' && push.value ? push.value.sent : 0;
-    const via = [emailed && 'email', pcs && `${pcs} PC${pcs === 1 ? '' : 's'}`].filter(Boolean).join(' + ');
-
-    if (emailFailed) console.error(`[Alert] EMAIL FAILED | ${toName} <${toEmail}> | ${timestamp} |`, email.reason);
-    console.log(`[Alert] ${cell.pcNumber} | email: ${emailed ? 'sent' : emailFailed ? 'failed' : 'none'} | PCs: ${pcs} | ${timestamp}`);
-
-    if (!via) {
-        if (emailFailed) showToast('error', 'Send failed — see console');
-        else showToast('warn', `No email or alert PC set up for ${cell.pcNumber}`);
-    } else if (emailFailed) {
-        showToast('warn', `Alert reached ${via}, but the email failed`);
+    console.log(`[Alert] DESKTOP | ${id} |`, result);
+    if (result.error) {
+        showToast('error', `Desktop alert failed — ${result.error}`);
+    } else if (result.sent) {
+        showToast('success', `Desktop alert sent to ${cell.user} · ${result.sent} PC${result.sent === 1 ? '' : 's'}`);
+    } else if (result.failed) {
+        showToast('error', 'Desktop alert could not be delivered — see console');
     } else {
-        showToast('success', `Alert sent to ${toName} · ${via}`);
+        showToast('warn', `No PC receives ${id}'s alerts yet`);
     }
-
-    permission.then(() => via
-        ? notifyDesktop('Alert sent', `${toName} (${cell.pcNumber}) was asked to return to their workstation · ${via}.`, `alert-${cell.id}`)
-        : notifyDesktop('Alert not sent', `The alert to ${toName} (${cell.pcNumber}) could not be delivered.`, `alert-${cell.id}`));
+    await getPushStatus(true);   // counts may have changed (expired PCs are removed)
+    updateDesktopButton(cell);
 }
 
 // ─── Push alerts: which PCs receive a station's alerts (server: api/) ────────
-const PUSH_STORE = 'ndma_push_stations';   // stations this browser receives alerts for
+const PUSH_STORE = 'ndma_push_station';    // the one station this PC receives alerts for
+const PUSH_STORE_OLD = 'ndma_push_stations';   // earlier list format (several stations)
 let pushConfigPromise = null;
 
 const pushSupported = () => window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window;
 
-function localPushStations() {
+function localPushStation() {
     try {
-        const list = JSON.parse(localStorage.getItem(PUSH_STORE));
-        return Array.isArray(list) ? list : [];
+        const id = localStorage.getItem(PUSH_STORE);
+        if (id) return id;
+        // Earlier versions kept a list; keep only the last station picked
+        const old = JSON.parse(localStorage.getItem(PUSH_STORE_OLD));
+        return Array.isArray(old) && old.length ? old[old.length - 1] : null;
     } catch (e) {
-        return [];
+        return null;
     }
 }
 
-function saveLocalPushStations(list) {
-    try { localStorage.setItem(PUSH_STORE, JSON.stringify(list)); } catch (e) { /* storage unavailable */ }
+function saveLocalPushStation(id) {
+    try {
+        if (id) localStorage.setItem(PUSH_STORE, id);
+        else localStorage.removeItem(PUSH_STORE);
+        localStorage.removeItem(PUSH_STORE_OLD);
+    } catch (e) { /* storage unavailable */ }
 }
 
 function getPushConfig() {
@@ -950,11 +993,11 @@ async function pushApi(method, body) {
 
 const pcLabel = () => `${navigator.userAgentData?.platform || navigator.platform || 'PC'} · ${new Date().toLocaleDateString('en-GB')}`;
 
-// Send the alert to every PC registered for this station. Resolves null when push isn't available.
+// Send the alert to every PC registered for this station → { total, sent, failed, expired } or { error }
 async function pushAlert(cell) {
-    if (!window.isSecureContext) return null;
+    if (!window.isSecureContext) return { error: 'only available on the website or installed app' };
     const cfg = await getPushConfig();
-    if (!cfg.enabled) return null;
+    if (!cfg.enabled) return { error: 'not set up on the server' };
     try {
         const res = await fetch('api/push-notify', {
             method: 'POST',
@@ -962,28 +1005,65 @@ async function pushAlert(cell) {
             body: JSON.stringify({ stationId: displayNumber(cell), pc: cell.pcNumber, portal: cell.portalName }),
         });
         if (!res.ok) {
-            console.warn('[Push] notify', res.status, await res.text());
-            return null;
+            const body = await res.json().catch(() => ({}));
+            console.warn('[Push] notify', res.status, body);
+            return { error: body.error || `server error ${res.status}` };
         }
         return await res.json();
     } catch (err) {
         console.warn('[Push] notify', err);
-        return null;
+        return { error: 'no connection' };
     }
 }
 
-// "Receive alerts here" in the side panel: this PC gets the station's alerts as system notifications
+// How many PCs each station has (api/push-status), cached for 30 s
+let pushStatusValue = null;
+let pushStatusCache = null;
+
+function getPushStatus(force = false) {
+    if (!force && pushStatusCache && Date.now() - pushStatusCache.at < 30000) return pushStatusCache.promise;
+    const promise = (window.isSecureContext
+        ? fetch('api/push-status', { cache: 'no-store' }).then(r => (r.ok ? r.json() : { enabled: false, stations: {} }))
+        : Promise.resolve({ enabled: false, stations: {} }))
+        .catch(() => ({ enabled: false, stations: {} }))
+        .then(status => (pushStatusValue = status));
+    pushStatusCache = { at: Date.now(), promise };
+    return promise;
+}
+
+function desktopAlertTitle(id, status, n) {
+    if (!status) return `Send a desktop notification to ${id}'s PC`;
+    if (!status.enabled) return 'Desktop alerts are not available here';
+    if (!n) return `No PC receives ${id}'s alerts yet. On the operator's PC: This PC → Receive alerts here`;
+    return `Send a desktop notification to ${n} PC${n === 1 ? '' : 's'} for ${id}`;
+}
+
+// Enable the Desktop button only when the station has a registered PC
+async function updateDesktopButton(cell) {
+    const id = displayNumber(cell);
+    const status = await getPushStatus();
+    const btn = $('panel-alert-desktop');
+    if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
+    const n = (status.stations && status.stations[id]) || 0;
+    btn.disabled = !status.enabled || !n;
+    btn.title = desktopAlertTitle(id, status, n);
+}
+
+// Side panel "This PC" row: this PC receives ONE station's alerts as system notifications.
+// Picking another station moves it there (the server removes it from the old one).
 async function togglePushHere(cell) {
     const id = displayNumber(cell);
-    const list = localPushStations();
+    const current = localPushStation();
 
-    if (list.includes(id)) {
+    if (current === id) {
         try {
             const sub = await currentSubscription('', false);
-            if (sub) await pushApi('DELETE', { stationId: id, endpoint: sub.endpoint });
-            const rest = list.filter(s => s !== id);
-            saveLocalPushStations(rest);
-            if (sub && !rest.length) await sub.unsubscribe();
+            if (sub) {
+                await pushApi('DELETE', { endpoint: sub.endpoint });
+                await sub.unsubscribe();
+            }
+            saveLocalPushStation(null);
+            await getPushStatus(true);
             showToast('info', `This PC no longer receives alerts for ${id}`);
         } catch (err) {
             console.error('[Push]', err);
@@ -1006,8 +1086,11 @@ async function togglePushHere(cell) {
     try {
         const sub = await currentSubscription(cfg.publicKey, true);
         await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() });
-        saveLocalPushStations([...list, id]);
-        showToast('success', `This PC will now receive alerts for ${id}`);
+        saveLocalPushStation(id);
+        await getPushStatus(true);
+        showToast('success', current
+            ? `This PC now receives alerts for ${id} only (moved from ${current})`
+            : `This PC now receives alerts for ${id}`);
     } catch (err) {
         console.error('[Push]', err);
         showToast('error', 'Could not register this PC — see console');
@@ -1015,15 +1098,17 @@ async function togglePushHere(cell) {
     renderPanel();
 }
 
-// On start-up, re-send this PC's registrations so the server always has its current subscription
+// On start-up, re-send this PC's registration so the server has its current subscription
+// (this also removes it from any other station it was linked to before)
 async function refreshPushRegistrations() {
-    const list = localPushStations();
-    if (!list.length || !pushSupported() || Notification.permission !== 'granted') return;
+    const id = localPushStation();
+    if (!id || !pushSupported() || Notification.permission !== 'granted') return;
     const cfg = await getPushConfig();
     if (!cfg.enabled) return;
     try {
         const sub = await currentSubscription(cfg.publicKey, true);
-        await Promise.all(list.map(id => pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() })));
+        await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() });
+        saveLocalPushStation(id);
     } catch (err) {
         console.warn('[Push] refresh', err);
     }
@@ -1304,9 +1389,14 @@ function attachListeners() {
             clearSelection();
             return;
         }
-        if (e.target.closest('#panel-alert')) {
+        if (e.target.closest('#panel-alert-desktop')) {
             const sel = getSelected();
-            if (sel) sendAlert(sel.cell, sel.cfg.id);
+            if (sel) sendDesktopAlert(sel.cell);
+            return;
+        }
+        if (e.target.closest('#panel-alert-mail')) {
+            const sel = getSelected();
+            if (sel) sendMailAlert(sel.cell, sel.cfg.id);
             return;
         }
         if (e.target.closest('#panel-push')) {

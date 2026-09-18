@@ -123,9 +123,14 @@ Files: `manifest.webmanifest`, `sw.js` (service worker) and `icons/`.
 
 ### Alerts on the operator's PC (push)
 
-**Send Alert** emails the operator and also pushes a Windows notification to every PC registered for that station. The notification stays on screen until dismissed.
+The side panel has two alert buttons, so each alert goes out on one channel only:
 
-**Register a PC:** on the operator's PC, open the dashboard (or the installed app), select their station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.
+- **Desktop** pushes a Windows notification to the PC registered for that station. It stays on screen until dismissed. The button is greyed out until a PC is registered.
+- **Mail** emails the operator (EmailJS). It is greyed out when the station has no email.
+
+**Register a PC:** on the operator's PC, open the dashboard (or the installed app), select **their own** station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.
+
+Each PC receives alerts for **one station only**. Picking another station (**Switch to …**) moves it; it no longer gets the old station's alerts. `https://<site>/api/push-status` shows how many PCs each station has.
 
 **One-time server setup (Vercel):**
 1. Vercel project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) → connect it to this project. This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
@@ -162,7 +167,7 @@ Server code: `api/` (Vercel functions) and `package.json`. Notifications only ar
 | Screen wall | All 5 blocks in one row, drawn to scale; each cell shows portal number + PC |
 | Block browser | Cards for the focused block, with per-block filter and sort (portal / PC) |
 | Side panel | Click any cell or card — Overview / Access / About tabs, no popups |
-| Send Alert | Emails the operator (EmailJS) asking them to return to their workstation |
+| Send alert | **Desktop** (push notification to the station's PC) or **Mail** (email to the operator), asking them to return to their workstation |
 | Search | Highlights cells by PC, user, IP, portal name/number/description; Enter selects the first match |
 | Dark/Light | Theme toggle; follows the system theme until changed, then persisted to localStorage |
 | Archive | Stations with `archived: true` in data.js appear in the Archive view |
