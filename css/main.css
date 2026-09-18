@@ -678,7 +678,7 @@ code {
 .wall {
     display: flex;
     gap: var(--sp-3);
-    align-items: flex-start;
+    align-items: center;    /* shorter blocks (G1, COP, N1) sit on the wall's centre line */
     width: max-content;
 }
 
