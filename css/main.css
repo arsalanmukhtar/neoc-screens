@@ -1421,6 +1421,28 @@ code {
     white-space: nowrap;
 }
 
+/* Helper row: Test / Download / Uninstall icon buttons at the right */
+.helper-actions {
+    margin-left: auto;
+    display: flex;
+    gap: var(--sp-1-5);
+}
+
+.helper-uninstall:hover {
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.info-row-meta.is-on {
+    color: var(--toast-success);
+    font-weight: var(--fw-semibold);
+}
+
+.info-row-meta.is-warn {
+    color: var(--warn-text, var(--warn));
+    font-weight: var(--fw-semibold);
+}
+
 /* Server badge on the Network row sits at the right edge */
 .info-row-body .type-badge {
     margin-left: auto;

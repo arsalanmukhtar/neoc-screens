@@ -8,6 +8,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Media;
@@ -23,32 +24,64 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("NEOC Alert Helper")]
 [assembly: AssemblyProduct("NEOC Tech (EW) Control Dashboard")]
 [assembly: AssemblyDescription("Shows NEOC desktop alerts full-screen, on top of all windows")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace NeocAlertHelper
 {
     static class Program
     {
         public const int Port = 47800;
-        public const string Version = "1.0";
+        public const string Version = "1.1";
+        const string MutexName = "NEOC.AlertHelper.SingleInstance";
 
         [STAThread]
         static void Main()
         {
             bool created;
-            using (var mutex = new Mutex(true, "NEOC.AlertHelper.SingleInstance", out created))
+            var mutex = new Mutex(true, MutexName, out created);
+            if (!created)
             {
+                // A newer download replaces an older copy that is still running
+                mutex.Dispose();
+                if (StopOlderCopies()) mutex = new Mutex(true, MutexName, out created);
                 if (!created)
                 {
                     MessageBox.Show("NEOC Alert Helper is already running.\nLook for its icon in the system tray.",
                         "NEOC Alert Helper", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
+            }
+            using (mutex)
+            {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new HelperContext());
             }
+        }
+
+        // Ends running copies of the helper that are older than this one. True if any were stopped.
+        static bool StopOlderCopies()
+        {
+            var mine = new Version(Application.ProductVersion);
+            int self = Process.GetCurrentProcess().Id;
+            bool stopped = false;
+            foreach (var p in Process.GetProcesses())
+            {
+                try
+                {
+                    if (p.Id == self) continue;
+                    var info = p.MainModule.FileVersionInfo;
+                    if (info.FileDescription != "NEOC Alert Helper") continue;
+                    if (new Version(info.FileVersion) >= mine) continue;
+                    p.Kill();
+                    p.WaitForExit(5000);
+                    stopped = true;
+                }
+                catch { }
+                finally { p.Dispose(); }
+            }
+            return stopped;
         }
     }
 
@@ -90,6 +123,12 @@ namespace NeocAlertHelper
             autostartItem = new ToolStripMenuItem("Start with Windows", null, delegate { ToggleAutostart(); });
             menu.Items.Add(autostartItem);
             menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Uninstall…", null, delegate
+            {
+                if (MessageBox.Show("Uninstall NEOC Alert Helper from this PC?\n\nIt stops, no longer starts with Windows, and its file is deleted.",
+                        "NEOC Alert Helper", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    Uninstall();
+            });
             menu.Items.Add("Exit", null, delegate { ExitHelper(); });
 
             tray = new NotifyIcon();
@@ -102,7 +141,8 @@ namespace NeocAlertHelper
             EnsureAutostartDefault();
             autostartItem.Checked = IsAutostartOn();
 
-            server = new AlertServer(Program.Port, OnAlertFromServer);
+            server = new AlertServer(Program.Port, OnAlertFromServer,
+                delegate { ui.Post(delegate { Uninstall(); }, null); });
             string error;
             if (!server.Start(out error))
             {
@@ -179,6 +219,25 @@ namespace NeocAlertHelper
             tray.Visible = false;
             tray.Dispose();
             ExitThread();
+        }
+
+        // Removes the startup entry and settings, quits, and deletes the exe once this process has ended
+        void Uninstall()
+        {
+            try { SetAutostart(false); } catch { }
+            try { Registry.CurrentUser.DeleteSubKeyTree(PrefKey, false); } catch { }
+            AcknowledgeAll();
+            try
+            {
+                var cleanup = new ProcessStartInfo("cmd.exe",
+                    "/c ping 127.0.0.1 -n 3 > nul & del /f /q \"" + Application.ExecutablePath + "\"");
+                cleanup.CreateNoWindow = true;
+                cleanup.UseShellExecute = false;
+                cleanup.WindowStyle = ProcessWindowStyle.Hidden;
+                Process.Start(cleanup);
+            }
+            catch { }
+            ExitHelper();
         }
 
         // Autostart: on by default the first time, then whatever the operator chooses
@@ -394,14 +453,16 @@ namespace NeocAlertHelper
     {
         readonly int port;
         readonly Action<AlertMessage> onAlert;
+        readonly Action onUninstall;
         TcpListener listener;
         Thread thread;
         volatile bool running;
 
-        public AlertServer(int port, Action<AlertMessage> onAlert)
+        public AlertServer(int port, Action<AlertMessage> onAlert, Action onUninstall)
         {
             this.port = port;
             this.onAlert = onAlert;
+            this.onUninstall = onUninstall;
         }
 
         public bool Start(out string error)
@@ -536,6 +597,12 @@ namespace NeocAlertHelper
                         alert.At = Str(json, "at", 40);
                         onAlert(alert);
                         Respond(stream, 200, "OK", "{\"ok\":true}", origin);
+                    }
+                    else if (method == "POST" && path == "/uninstall")
+                    {
+                        // Answer first: the helper quits right after
+                        Respond(stream, 200, "OK", "{\"ok\":true}", origin);
+                        onUninstall();
                     }
                     else
                     {

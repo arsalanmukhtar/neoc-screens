@@ -37,6 +37,7 @@ const ICONS = {
     'layout-grid': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
     'archive': '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-10 4h4"/>',
     'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+    'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
     'bell-off': '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>',
     'bell': '<path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
     'chevron-left': '<path d="m15 18-6-6 6-6"/>',
@@ -856,18 +857,18 @@ function pushRow(cell) {
     const id = displayNumber(cell);
     const current = localPushStation();
     const here = current === id;
-    const text = here ? 'Receives this station’s alerts'
-        : current ? `Receives alerts for ${escHtml(current)}`
-            : 'Not receiving alerts';
+    const text = here ? 'Activated'
+        : current ? `Active for ${escHtml(current)}`
+            : 'Not activated';
     const label = here ? 'Stop' : current ? `Switch to ${escHtml(id)}` : 'Receive alerts here';
     const title = here ? `Stop showing this station’s alerts on this ${deviceWord()}`
         : current ? `This ${deviceWord()} gets ${escHtml(current)}’s alerts. Switch it to ${escHtml(id)} instead`
             : `Show this station’s alerts as notifications on this ${deviceWord()}`;
     return `
     <div class="info-row">
-        <div class="info-row-label">This ${deviceWord() === 'PC' ? 'PC' : 'device'}</div>
+        <div class="info-row-label">Alerts</div>
         <div class="info-row-body">
-            <div class="info-row-meta">${text}</div>
+            <div class="info-row-meta${here ? ' is-on' : ''}">${text}</div>
             <button id="panel-push" class="btn btn-sm ${here ? 'btn-muted' : 'btn-primary'} push-btn" type="button" title="${title}">
                 ${ic(here ? 'bell-off' : 'bell', 13)}${label}
             </button>
@@ -884,18 +885,27 @@ function helperRow(cell) {
 
 function helperRowInner() {
     const running = helperState === true;
-    const text = helperState === null ? 'Checking…' : running ? 'Running' : 'Not running';
-    const action = running
-        ? `<button id="helper-test" class="btn btn-sm btn-muted push-btn" type="button"
-            title="Show a full-screen test alert on this PC">${ic('monitor', 13)}Test</button>`
-        : `<a class="btn btn-sm btn-primary push-btn btn-icon" href="${HELPER_DOWNLOAD}" download
-            aria-label="Download the alert helper"
-            title="Download the Windows helper that shows alerts full-screen">${ic('download', 14)}</a>`;
+    const outdated = running && helperVersion !== HELPER_VERSION;
+    const text = helperState === null ? 'Checking…'
+        : !running ? 'Not running'
+        : outdated ? `Old version${helperVersion ? ` (v${helperVersion})` : ''}` : `Running · v${helperVersion}`;
+    const test = running && !outdated
+        ? `<button id="helper-test" class="btn btn-sm btn-muted btn-icon" type="button"
+            aria-label="Test alert" title="Show a full-screen test alert on this PC">${ic('monitor', 14)}</button>`
+        : '';
+    const download = `<a class="btn btn-sm ${running && !outdated ? 'btn-muted' : 'btn-primary'} btn-icon"
+            href="${HELPER_DOWNLOAD}?v=${HELPER_VERSION}" download="NEOC-Alert-Helper.exe" aria-label="Download the alert helper"
+            title="${outdated ? `Download v${HELPER_VERSION}. Running it replaces the old version`
+                : 'Download the Windows helper that shows alerts full-screen'}">${ic('download', 14)}</a>`;
+    const uninstall = running
+        ? `<button id="helper-uninstall" class="btn btn-sm btn-muted btn-icon helper-uninstall" type="button"
+            aria-label="Uninstall the alert helper" title="Uninstall the helper from this PC">${ic('trash', 14)}</button>`
+        : '';
     return `
         <div class="info-row-label">Helper</div>
         <div class="info-row-body">
-            <div class="info-row-meta">${text}</div>
-            ${action}
+            <div class="info-row-meta${outdated ? ' is-warn' : ''}">${text}</div>
+            <div class="helper-actions">${test}${download}${uninstall}</div>
         </div>`;
 }
 
@@ -1291,7 +1301,9 @@ function ensureNotifyPermission() {
 // downloads/NEOC-Alert-Helper.exe (source: helper/). It listens only on this PC (127.0.0.1).
 const HELPER_URL = 'http://127.0.0.1:47800';
 const HELPER_DOWNLOAD = 'downloads/NEOC-Alert-Helper.exe';
+const HELPER_VERSION = '1.1';   // keep in step with Program.Version in helper/NeocAlertHelper.cs
 let helperState = null;   // null = not checked yet, true = running, false = not found
+let helperVersion = '';
 
 const isWindows = () => /Windows/i.test(navigator.userAgent);
 const isMobileDevice = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -1302,6 +1314,7 @@ async function pingHelper() {
     try {
         const res = await fetch(`${HELPER_URL}/ping`, { cache: 'no-store' });
         helperState = res.ok;
+        helperVersion = res.ok ? ((await res.json().catch(() => ({}))).version || '') : '';
     } catch (e) {
         helperState = false;
     }
@@ -1330,6 +1343,25 @@ async function testHelper() {
         if (row) row.innerHTML = helperRowInner();
         showToast('warn', 'Helper not running — download it and run it on this PC');
     }
+}
+
+// Stops the helper, removes it from Windows startup and deletes its exe (helper v1.1+)
+async function uninstallHelper() {
+    if (!confirm('Uninstall the NEOC Alert Helper from this PC?\n\nIt stops, no longer starts with Windows, and its file is deleted. You can download it again at any time.')) return;
+    const res = await fetch(`${HELPER_URL}/uninstall`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' })
+        .catch(() => null);
+    if (res && res.ok) {
+        helperState = false;
+        helperVersion = '';
+        showToast('success', 'Alert helper uninstalled from this PC');
+    } else if (res && res.status === 404) {
+        showToast('warn', 'This old helper can’t uninstall itself. Download the new one and run it: it replaces the old one');
+    } else {
+        showToast('error', 'Could not reach the alert helper');
+        await pingHelper();
+    }
+    const row = $('helper-row');
+    if (row) row.innerHTML = helperRowInner();
 }
 
 // ─── Incoming alert: pulsing overlay in the middle of the screen ─────────────
@@ -1569,6 +1601,10 @@ function attachListeners() {
         }
         if (e.target.closest('#helper-test')) {
             testHelper();
+            return;
+        }
+        if (e.target.closest('#helper-uninstall')) {
+            uninstallHelper();
             return;
         }
         if (e.target.closest('#panel-push')) {
