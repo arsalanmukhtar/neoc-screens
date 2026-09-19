@@ -165,8 +165,7 @@
                     <div class="page-head">
                         <div>
                             <h1 class="page-title">Archive</h1>
-                            <p class="page-sub">Stations marked <code>archived: true</code> in data.js — hidden from
-                                the wall.</p>
+                            <p id="archive-sub" class="page-sub">Retired stations — no longer shown on the screen wall.</p>
                         </div>
                         <button id="archive-back" class="btn btn-muted" type="button">
                             <span data-icon="arrow-left" data-size="14"></span>
@@ -176,11 +175,21 @@
 
                     <section class="browser">
                         <div class="browser-head">
-                            <div id="archive-tabs" class="seg-tabs" role="tablist" aria-label="Archive filter">
-                                <button class="seg-tab is-active" type="button" data-filter="all">All</button>
-                                <button class="seg-tab" type="button" data-filter="global">Global (G1 / G2)</button>
-                                <button class="seg-tab" type="button" data-filter="national">National (N1 / N2)</button>
-                                <button class="seg-tab" type="button" data-filter="cop">COP</button>
+                            <div id="archive-tabs" class="filter-chips" role="tablist" aria-label="Archive filter">
+                                <button class="filter-chip is-active" type="button" role="tab" data-filter="all">
+                                    <span>All</span><span class="filter-chip-count" data-count="all">0</span>
+                                </button>
+                                <button class="filter-chip" type="button" role="tab" data-filter="global">
+                                    <span>Global</span><span class="filter-chip-sub">G1 · G2</span>
+                                    <span class="filter-chip-count" data-count="global">0</span>
+                                </button>
+                                <button class="filter-chip" type="button" role="tab" data-filter="national">
+                                    <span>National</span><span class="filter-chip-sub">N1 · N2</span>
+                                    <span class="filter-chip-count" data-count="national">0</span>
+                                </button>
+                                <button class="filter-chip" type="button" role="tab" data-filter="cop">
+                                    <span>COP</span><span class="filter-chip-count" data-count="cop">0</span>
+                                </button>
                             </div>
                             <div class="browser-tools">
                                 <label class="field-search">

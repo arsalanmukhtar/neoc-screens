@@ -658,14 +658,29 @@ function renderArchive() {
         });
     });
 
-    $$('#archive-tabs .seg-tab').forEach(t =>
-        t.classList.toggle('is-active', t.dataset.filter === state.archiveFilter));
+    // Chip counts ignore the search, so they always show what each group holds
+    const archivedIn = ids => GRID_CONFIG.filter(c => !ids || ids.includes(c.id))
+        .reduce((n, c) => n + GRID_DATA[c.id].filter(cell => cell.archived).length, 0);
+    const counts = { all: archivedIn(null) };
+    Object.keys(ARCHIVE_GROUPS).forEach(k => { counts[k] = archivedIn(ARCHIVE_GROUPS[k]); });
+    $$('#archive-tabs .filter-chip').forEach(t => {
+        const on = t.dataset.filter === state.archiveFilter;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', String(on));
+        t.querySelector('.filter-chip-count').textContent = counts[t.dataset.filter];
+    });
+    $('archive-sub').textContent = counts.all
+        ? `${counts.all} retired ${counts.all === 1 ? 'station' : 'stations'} — no longer shown on the screen wall.`
+        : 'No retired stations — every station is on the screen wall.';
 
+    const filtered = q || state.archiveFilter !== 'all';
     $('archive-grid').innerHTML = items.length
         ? items.join('')
-        : `<div class="empty-state">${q || state.archiveFilter !== 'all'
-            ? 'No archived stations match your filter.'
-            : 'No archived stations.'}</div>`;
+        : `<div class="empty-state">
+            <div class="empty-state-icon">${ic(filtered ? 'search' : 'archive', 20)}</div>
+            <div class="empty-state-title">${filtered ? 'No matches' : 'Nothing archived'}</div>
+            <p>${filtered ? 'Try another filter or search.' : 'Retired stations will appear here.'}</p>
+        </div>`;
 }
 
 // ─── Selection & side panel ───────────────────────────────────────────────────
@@ -1494,7 +1509,7 @@ function attachListeners() {
     // Archive
     $('archive-back').addEventListener('click', () => setView('wall'));
     $('archive-tabs').addEventListener('click', e => {
-        const tab = e.target.closest('.seg-tab');
+        const tab = e.target.closest('.filter-chip');
         if (!tab) return;
         state.archiveFilter = tab.dataset.filter;
         renderArchive();

@@ -933,36 +933,67 @@ code {
     font-size: var(--fs-sm);
 }
 
-/* Segmented tabs (archive filter) */
-.seg-tabs {
+/* Filter chips (archive) */
+.filter-chips {
     display: flex;
-    gap: var(--sp-1);
-    padding: 3px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
     flex-wrap: wrap;
+    gap: var(--sp-2);
 }
 
-.seg-tab {
-    height: 28px;
-    padding: 0 var(--sp-3);
-    border-radius: 6px;
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-medium);
+.filter-chip {
+    height: 32px;
+    padding: 0 var(--sp-1-5) 0 var(--sp-3);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+    background: var(--surface);
     color: var(--ink-soft);
-    transition: background var(--t-fast), color var(--t-fast);
-}
-
-.seg-tab:hover {
-    color: var(--ink);
-}
-
-.seg-tab.is-active {
-    background: var(--elevated);
-    color: var(--ink);
+    font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
-    box-shadow: var(--shadow-sm);
+    transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+
+.filter-chip:hover {
+    border-color: var(--primary);
+    color: var(--ink);
+}
+
+.filter-chip-sub {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    color: var(--muted-foreground);
+}
+
+.filter-chip-count {
+    min-width: 22px;
+    height: 20px;
+    padding: 0 var(--sp-1-5);
+    border-radius: var(--r-full);
+    background: var(--muted);
+    color: var(--ink-soft);
+    font-size: 0.6875rem;   /* 11px */
+    font-weight: var(--fw-bold);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-chip.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
+}
+
+.filter-chip.is-active .filter-chip-sub {
+    color: inherit;
+    opacity: 0.75;
+}
+
+.filter-chip.is-active .filter-chip-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: inherit;
 }
 
 /* ─── Station card ────────────────────────────────────── */
@@ -1078,6 +1109,33 @@ code {
     text-align: center;
     color: var(--muted-foreground);
     font-weight: var(--fw-medium);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-1);
+}
+
+.empty-state-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: var(--sp-2);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state-title {
+    font-family: var(--font-head);
+    font-size: var(--fs-base);
+    font-weight: var(--fw-bold);
+    color: var(--ink);
+}
+
+.empty-state p {
+    font-size: var(--fs-sm);
 }
 
 /* ─── Side panel ──────────────────────────────────────── */
