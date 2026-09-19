@@ -149,13 +149,37 @@ A browser can't draw over other programs, so each operator PC can run a small tr
 
 1. On the operator's PC, open the station in the dashboard. Below **Alerts**, the **Helper** row shows **Download** → run `NEOC-Alert-Helper.exe` (Windows may warn about an unrecognised app: **More info → Run anyway**).
 2. It sits in the system tray and starts with Windows (right-click the tray icon to change that, show a test alert, or exit).
-3. The **Helper** row then shows **Running · v1.1** with **Test**, **Download** and **Uninstall** buttons. The first time, Chrome/Edge may ask to let the site **access apps on this device**: choose **Allow**.
+3. The **Helper** row then shows **Running · v1.1** with **Check again** (refresh), **Test**, **Download** and **Uninstall** buttons. After Download the row also checks by itself every few seconds, so no page reload is needed. The first time, Chrome/Edge may ask to let the site **access apps on this device**: choose **Allow**.
 
 **Updating.** If the row says **Old version**, click **Download** and run the new exe: it stops the older copy and takes over (v1.0 can't uninstall itself, so this is the way to replace it). **Uninstall** (also in the tray menu) stops the helper, removes it from Windows startup and deletes its exe. After changing the helper, bump `Version` in `helper/NeocAlertHelper.cs` and `HELPER_VERSION` in `js/app.js` together.
 
 The helper only listens on `127.0.0.1:47800`, accepts requests from the dashboard's own site, and never connects to the internet. The browser (or installed app) must be running to receive the alert and hand it over. Source: `helper/NeocAlertHelper.cs`; rebuild with `helper\build.cmd` (uses the C# compiler built into Windows) → `downloads/NEOC-Alert-Helper.exe`.
 
 Server code: `api/` (Vercel functions) and `package.json`. Notifications only arrive while Edge/Chrome is running (it can run in the background).
+
+---
+
+## Admin: sign in, IP addresses and system passwords
+
+The person icon at the top right opens the **Sign in** screen (one admin account). Once signed in it shows the account's initial; click it for the email, **Admin** status and **Sign out**. A sign-in has no expiry: the browser stays signed in until Sign out.
+
+Signed in, a station's **Overview** tab lets you:
+
+- **Network**: click the pencil to change the IP. Saving commits the new `ip` to `js/data.js` on GitHub, and Vercel redeploys it for everyone in about a minute.
+- **Password**: show, copy or edit the PC's system password. Signed out, it stays hidden.
+
+System passwords are kept in Upstash Redis (`station:passwords`), **not** in `data.js`: this repository and the site are public, so anything in `data.js` can be read by anyone.
+
+Vercel → Settings → Environment Variables (then redeploy):
+
+| Variable | Value |
+| --- | --- |
+| `ADMIN_EMAIL` | `developer.ndma@gmail.com` (the default if left out) |
+| `ADMIN_PASSWORD` | the admin password. Keep it only here, never in the code |
+| `GITHUB_TOKEN` | GitHub → Settings → Developer settings → Fine-grained tokens: only this repository, **Contents: Read and write** |
+| `AUTH_SECRET` | optional. By default derived from `ADMIN_PASSWORD`, so changing the password signs every browser out |
+
+Because IP edits commit to `main`, run `git pull` before pushing local changes.
 
 ---
 

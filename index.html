@@ -78,6 +78,13 @@
                 <button id="btn-archive" class="icon-btn" type="button" title="Archive" aria-label="Archive view">
                     <span data-icon="archive"></span>
                 </button>
+                <div class="account">
+                    <button id="btn-account" class="icon-btn" type="button" title="Sign in" aria-label="Sign in"
+                        aria-haspopup="dialog" aria-expanded="false">
+                        <span data-icon="user"></span>
+                    </button>
+                    <div id="account-menu" class="account-menu" role="dialog" aria-label="Signed-in user" hidden></div>
+                </div>
             </div>
         </header>
 
@@ -237,6 +244,39 @@
     <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
 
     <!-- ═══ INCOMING ALERT (desktop alert received on this PC) ══════════════ -->
+    <!-- Admin sign-in (edits IP addresses and system passwords) -->
+    <div id="signin-screen" class="signin-screen" role="dialog" aria-modal="true" aria-labelledby="signin-title" hidden>
+        <form id="signin-form" class="signin-card" novalidate>
+            <button id="signin-close" class="icon-btn icon-btn-sm signin-close" type="button" aria-label="Close"
+                title="Back to the dashboard">
+                <span data-icon="x" data-size="14"></span>
+            </button>
+            <div class="brand-mark signin-mark">N</div>
+            <h2 id="signin-title" class="signin-title">Sign in</h2>
+            <p class="signin-sub">Admin access to edit station IP addresses and system passwords.</p>
+            <label class="signin-field">
+                <span class="signin-label">Email</span>
+                <input id="signin-email" class="signin-input" type="email" autocomplete="username"
+                    placeholder="name@example.com" required />
+            </label>
+            <label class="signin-field">
+                <span class="signin-label">Password</span>
+                <span class="signin-pass">
+                    <input id="signin-password" class="signin-input" type="password" autocomplete="current-password"
+                        placeholder="Password" required />
+                    <button id="signin-show" class="signin-eye" type="button" aria-label="Show password" title="Show password">
+                        <span data-icon="eye" data-size="15"></span>
+                    </button>
+                </span>
+            </label>
+            <div id="signin-error" class="signin-error" role="alert" hidden></div>
+            <button id="signin-submit" class="btn btn-primary btn-lg signin-submit" type="submit">
+                <span data-icon="log-in" data-size="15"></span>Sign in
+            </button>
+            <p class="signin-note">You stay signed in on this browser until you sign out.</p>
+        </form>
+    </div>
+
     <div id="alert-overlay" class="alert-overlay" role="alertdialog" aria-modal="true"
         aria-labelledby="alert-title" aria-describedby="alert-body" hidden>
         <div class="alert-card">

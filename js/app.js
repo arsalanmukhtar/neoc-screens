@@ -16,6 +16,8 @@ const state = {
     devQuery: '',             // Developers widget search
     devId: null,              // developer shown in the widget
     devPortal: null,          // { devId, portalId } shown in the side panel
+    editing: null,            // { cellId, field: 'ip' | 'password' } being edited in the panel (admin)
+    revealed: null,           // cell id whose system password is shown in plain text
 };
 
 // ─── EmailJS Config (hardcoded) ───────────────────────────────────────────────
@@ -37,6 +39,17 @@ const ICONS = {
     'layout-grid': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
     'archive': '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-10 4h4"/>',
     'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+    'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    'log-in': '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+    'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    'eye': '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+    'eye-off': '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
+    'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+    'check': '<path d="M20 6 9 17l-5-5"/>',
+    'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
     'bell-off': '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>',
     'bell': '<path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
@@ -162,20 +175,11 @@ function getSelected() {
     return { cell, cfg: GRID_CONFIG[cfgIndex(state.selected.gridId)] };
 }
 
-// How a station's portal is started and opened
+// How a station's portal is served (short = the Network row badge)
 const ACCESS_TYPES = {
-    vscode: {
-        label: 'VS Code Live Server',
-        steps: ['Open the project folder in VS Code on this PC', 'Right-click index.html in the Explorer', 'Choose "Open with Live Server"'],
-    },
-    npm: {
-        label: 'npm',
-        steps: ['Open a terminal in the project folder on this PC', 'Run npm start (or npm run dev)', 'Open the URL below'],
-    },
-    browser: {
-        label: 'Browser',
-        steps: ['No setup needed on this PC', 'Open the URL below from any PC on the network'],
-    },
+    vscode: { label: 'VS Code Live Server', short: 'Live Server' },
+    npm: { label: 'npm', short: 'npm' },
+    browser: { label: 'Browser', short: 'Browser' },
 };
 
 function accessInfo(cell) {
@@ -190,7 +194,7 @@ function accessInfo(cell) {
                 : 'localhost';
         url = `http://${host}:${port}${path}`;
     }
-    return { type, port, url, ...(ACCESS_TYPES[type] || { label: type || 'Custom', steps: [] }) };
+    return { type, port, url, ...(ACCESS_TYPES[type] || { label: type || 'Custom' }) };
 }
 
 // ─── Developers (config in js/developers.js) ─────────────────────────────────
@@ -478,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAlertOverlay();
     initSheetGestures();
     refreshPushRegistrations();
+    initAuth();
     tickClock();
     setInterval(tickClock, 1000);
 });
@@ -688,6 +693,8 @@ function renderArchive() {
 function selectCell(gridId, cellId) {
     state.selected = { gridId, cellId };
     state.devPortal = null;
+    state.editing = null;
+    state.revealed = null;
     const idx = cfgIndex(gridId);
     const cell = findCell(gridId, cellId);
     // Jump the browser to the station's block (archived stations stay in the archive list)
@@ -702,6 +709,8 @@ function selectCell(gridId, cellId) {
 function clearSelection() {
     state.selected = null;
     state.devPortal = null;
+    state.editing = null;
+    state.revealed = null;
     refreshSelection();
 }
 
@@ -847,8 +856,9 @@ function infoRow(label, value, meta, extraHTML = '') {
 
 function serverBadge(access) {
     if (!access) return '';
-    const text = `${escHtml(access.label)}${access.port ? ` · Port ${escHtml(access.port)}` : ''}`;
-    return `<span class="type-badge" data-type="${escHtml(access.type)}">${text}</span>`;
+    const full = `${access.label}${access.port ? ` · Port ${access.port}` : ''}`;
+    const text = `${access.short || access.label}${access.port ? ` · ${access.port}` : ''}`;
+    return `<span class="type-badge" data-type="${escHtml(access.type)}" title="${escHtml(full)}">${escHtml(text)}</span>`;
 }
 
 // Which station this PC receives alerts for (one station per PC)
@@ -902,12 +912,49 @@ function helperRowInner() {
             ${running ? '' : 'disabled'} aria-label="Uninstall the alert helper"
             title="${running ? 'Uninstall the helper from this PC'
                 : 'Nothing to uninstall: the helper isn’t running on this PC'}">${ic('trash', 14)}</button>`;
+    const refresh = `<button id="helper-refresh" class="btn btn-sm btn-muted btn-icon${helperChecking ? ' is-spinning' : ''}" type="button"
+            ${helperChecking ? 'disabled' : ''} aria-label="Check again" title="Check again (after installing or starting the helper)">${ic('refresh-cw', 14)}</button>`;
     return `
         <div class="info-row-label">Helper</div>
         <div class="info-row-body">
             <div class="info-row-meta${outdated ? ' is-warn' : ''}">${text}</div>
-            <div class="helper-actions">${test}${download}${uninstall}</div>
+            <div class="helper-actions">${refresh}${test}${download}${uninstall}</div>
         </div>`;
+}
+
+// Refresh button: look for the helper again without reloading the page
+async function recheckHelper() {
+    helperChecking = true;
+    renderHelperRow();
+    const [running] = await Promise.all([pingHelper(), new Promise(r => setTimeout(r, 500))]);
+    helperChecking = false;
+    renderHelperRow();
+    if (running && helperVersion === HELPER_VERSION) showToast('success', `Alert helper is running (v${helperVersion})`);
+    else if (running) showToast('warn', `Old helper (v${helperVersion || '1.0'}) running. Download and run the new one`);
+    else showToast('warn', 'Helper not found. Run NEOC-Alert-Helper.exe, then check again');
+}
+
+// After Download, keep checking for a few minutes so the row updates by itself once it runs
+let helperWatch = null;
+function watchForHelper() {
+    clearInterval(helperWatch);
+    const until = Date.now() + 3 * 60 * 1000;
+    helperWatch = setInterval(async () => {
+        if (Date.now() > until) {
+            clearInterval(helperWatch);
+            return;
+        }
+        if (await pingHelper() && helperVersion === HELPER_VERSION) {
+            clearInterval(helperWatch);
+            renderHelperRow();
+            showToast('success', `Alert helper is running (v${helperVersion})`);
+        }
+    }, 3000);
+}
+
+function renderHelperRow() {
+    const row = $('helper-row');
+    if (row) row.innerHTML = helperRowInner();
 }
 
 async function updateHelperRow() {
@@ -922,14 +969,375 @@ function panelOverviewTab(cell) {
     <div class="info-rows">
         ${infoRow('Category', cell.category)}
         ${infoRow('Operator', cell.user, cell.mail || 'No email on file')}
-        ${infoRow('Network', cell.ipAddress, '', serverBadge(accessInfo(cell)))}
+        ${networkRow(cell)}
+        ${passwordRow(cell)}
         ${pushRow(cell)}
         ${helperRow(cell)}
-    </div>
-    <div>
-        <div class="section-label">Portal access</div>
-        ${accessSection(cell)}
     </div>`;
+}
+
+// ─── Editable rows (admin): IP address and system password ───────────────────
+const isEditing = (cell, field) => Boolean(state.editing && state.editing.cellId === cell.id && state.editing.field === field);
+
+function rowIconButton(action, icon, label) {
+    return `<button class="row-icon" type="button" data-row-action="${action}" aria-label="${label}" title="${label}">${ic(icon, 14)}</button>`;
+}
+
+function editRow(label, field, value, placeholder) {
+    return `
+    <div class="info-row is-editing">
+        <div class="info-row-label">${label}</div>
+        <div class="info-row-body">
+            <input id="row-edit-input" class="row-input" type="text" value="${escHtml(value)}" data-field="${field}"
+                placeholder="${escHtml(placeholder)}" spellcheck="false" autocomplete="off" aria-label="${label}" />
+            <div class="row-actions">
+                <button class="btn btn-sm btn-primary btn-icon" type="button" data-row-action="save" aria-label="Save" title="Save (Enter)">${ic('check', 14)}</button>
+                <button class="btn btn-sm btn-muted btn-icon" type="button" data-row-action="cancel" aria-label="Cancel" title="Cancel (Esc)">${ic('x', 14)}</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function networkRow(cell) {
+    if (isEditing(cell, 'ip')) return editRow('Network', 'ip', cell.ipAddress, '172.18.1.112');
+    return `
+    <div class="info-row">
+        <div class="info-row-label">Network</div>
+        <div class="info-row-body">
+            <div class="info-row-value" title="${escHtml(cell.ipAddress)}">${escHtml(cell.ipAddress || '—')}</div>
+            ${isAdmin() ? rowIconButton('edit-ip', 'pencil', 'Edit IP address') : ''}
+            ${serverBadge(accessInfo(cell))}
+        </div>
+    </div>`;
+}
+
+function passwordRow(cell) {
+    const id = displayNumber(cell);
+    const password = stationSecrets[id] || '';
+    if (isEditing(cell, 'password')) return editRow('Password', 'password', password, 'System password');
+
+    let body;
+    if (!isAdmin()) {
+        body = `
+            <div class="info-row-value secret-mask" aria-label="Hidden">••••••••</div>
+            <button class="btn btn-sm btn-muted push-btn" type="button" data-row-action="signin"
+                title="Sign in as admin to see and edit the system password">${ic('lock', 13)}Sign in</button>`;
+    } else if (!secretsLoaded) {
+        body = '<div class="info-row-meta">Loading…</div>';
+    } else if (!password) {
+        body = `
+            <div class="info-row-meta">Not set</div>
+            <div class="row-actions">${rowIconButton('edit-password', 'pencil', 'Set the system password')}</div>`;
+    } else {
+        const shown = state.revealed === cell.id;
+        body = `
+            <div class="info-row-value${shown ? ' secret-plain' : ' secret-mask'}" title="${shown ? escHtml(password) : ''}">${shown ? escHtml(password) : '••••••••'}</div>
+            <div class="row-actions">
+                ${rowIconButton('reveal-password', shown ? 'eye-off' : 'eye', shown ? 'Hide password' : 'Show password')}
+                ${rowIconButton('copy-password', 'copy', 'Copy password')}
+                ${rowIconButton('edit-password', 'pencil', 'Edit system password')}
+            </div>`;
+    }
+    return `
+    <div class="info-row">
+        <div class="info-row-label">Password</div>
+        <div class="info-row-body">${body}</div>
+    </div>`;
+}
+
+function startEdit(cell, field) {
+    state.editing = { cellId: cell.id, field };
+    renderPanel();
+    const input = $('row-edit-input');
+    if (input) {
+        input.focus();
+        input.select();
+    }
+}
+
+function cancelEdit() {
+    state.editing = null;
+    renderPanel();
+}
+
+async function saveEdit(cell) {
+    const input = $('row-edit-input');
+    if (!input || !state.editing) return;
+    const field = state.editing.field;
+    const id = displayNumber(cell);
+    const btn = document.querySelector('[data-row-action="save"]');
+    input.disabled = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
+    }
+    try {
+        const data = await authFetch('/api/station-admin', {
+            method: 'POST',
+            body: JSON.stringify({ stationId: id, field, value: input.value }),
+        });
+        if (field === 'ip') {
+            cell.ipAddress = `172.18.${data.ip}`;
+            const cfg = GRID_CONFIG.find(g => GRID_DATA[g.id].includes(cell));
+            const station = cfg && cfg.stations.find(s => s.id === cell.stationId);
+            if (station) station.ip = data.ip;
+            showToast('success', data.changed
+                ? `${id} IP saved to data.js. Live for everyone in about a minute`
+                : `${id} IP unchanged`);
+            renderBrowser();
+            updateWallState();
+        } else {
+            if (data.password) stationSecrets[id] = data.password;
+            else delete stationSecrets[id];
+            showToast('success', data.password ? `${id} system password saved` : `${id} system password cleared`);
+        }
+        state.editing = null;
+        renderPanel();
+    } catch (err) {
+        if (err.status === 401) return;   // signed out: authFetch has already said so
+        showToast('error', err.message);
+        input.disabled = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+            btn.innerHTML = ic('check', 14);
+        }
+        input.focus();
+    }
+}
+
+async function copyPassword(cell) {
+    const password = stationSecrets[displayNumber(cell)];
+    if (!password) return;
+    try {
+        await navigator.clipboard.writeText(password);
+        showToast('success', `${displayNumber(cell)} password copied`);
+    } catch (e) {
+        showToast('error', 'Could not copy. Show the password and copy it by hand');
+    }
+}
+
+// Row buttons in the Overview tab; true if the click was handled
+function onRowAction(action) {
+    const sel = getSelected();
+    if (!sel) return false;
+    const { cell } = sel;
+    switch (action) {
+        case 'signin': openSignIn(); break;
+        case 'edit-ip': startEdit(cell, 'ip'); break;
+        case 'edit-password': startEdit(cell, 'password'); break;
+        case 'save': saveEdit(cell); break;
+        case 'cancel': cancelEdit(); break;
+        case 'copy-password': copyPassword(cell); break;
+        case 'reveal-password':
+            state.revealed = state.revealed === cell.id ? null : cell.id;
+            renderPanel();
+            break;
+        default: return false;
+    }
+    return true;
+}
+
+// ─── Admin sign-in (api/auth.js): one admin account, no expiry ───────────────
+const AUTH_STORE = 'ndma_auth';
+let auth = loadAuth();            // { token, user: { email, role, since } } or null
+let stationSecrets = {};          // station id → system password (admin only, kept in memory)
+let secretsLoaded = false;
+
+function loadAuth() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(AUTH_STORE));
+        return saved && saved.token ? saved : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function saveAuth(value) {
+    try {
+        if (value) localStorage.setItem(AUTH_STORE, JSON.stringify(value));
+        else localStorage.removeItem(AUTH_STORE);
+    } catch (e) { /* storage unavailable */ }
+}
+
+const isAdmin = () => Boolean(auth);
+
+async function authFetch(path, options = {}) {
+    const res = await fetch(path, {
+        ...options,
+        cache: 'no-store',
+        headers: {
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            Authorization: `Bearer ${auth ? auth.token : ''}`,
+        },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+        signOut('expired');
+        throw Object.assign(new Error(data.error || 'Not signed in'), { status: 401 });
+    }
+    if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status });
+    return data;
+}
+
+// On start-up: check the saved sign-in is still valid, then load the passwords
+async function initAuth() {
+    renderAccount();
+    if (!auth) return;
+    try {
+        const data = await authFetch('/api/auth');
+        auth = { ...auth, user: data.user };
+        saveAuth(auth);
+        renderAccount();
+    } catch (err) {
+        if (err.status === 401) return;
+        // Offline or server not set up yet: keep the saved sign-in
+    }
+    loadSecrets();
+}
+
+async function loadSecrets() {
+    if (!auth) return;
+    try {
+        const data = await authFetch('/api/station-admin');
+        stationSecrets = data.passwords || {};
+    } catch (err) {
+        if (err.status === 401) return;
+        console.error('[Admin]', err);
+    }
+    secretsLoaded = true;
+    if (!state.editing) renderPanel();
+}
+
+function openSignIn() {
+    closeAccountMenu();
+    $('signin-error').hidden = true;
+    $('signin-screen').hidden = false;
+    document.body.classList.add('signin-open');
+    const email = $('signin-email');
+    (email.value ? $('signin-password') : email).focus();
+}
+
+function closeSignIn() {
+    $('signin-screen').hidden = true;
+    document.body.classList.remove('signin-open');
+    $('signin-password').value = '';
+    $('btn-account').focus();
+}
+
+async function submitSignIn(e) {
+    e.preventDefault();
+    const email = $('signin-email').value.trim();
+    const password = $('signin-password').value;
+    const error = $('signin-error');
+    if (!email || !password) {
+        error.textContent = 'Enter your email and password';
+        error.hidden = false;
+        return;
+    }
+    const btn = $('signin-submit');
+    const idle = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Signing in';
+    error.hidden = true;
+    try {
+        const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.token) throw new Error(data.error || `Sign-in failed (${res.status})`);
+        auth = { token: data.token, user: data.user };
+        saveAuth(auth);
+        secretsLoaded = false;
+        closeSignIn();
+        renderAccount();
+        renderPanel();
+        loadSecrets();
+        showToast('success', `Signed in as ${data.user.email}`);
+    } catch (err) {
+        error.textContent = err.message === 'Failed to fetch' ? 'Could not reach the server. Check the connection' : err.message;
+        error.hidden = false;
+        $('signin-password').select();
+    } finally {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.innerHTML = idle;
+    }
+}
+
+// reason: undefined (user clicked Sign out) or 'expired' (server no longer accepts the sign-in)
+function signOut(reason) {
+    if (!auth) return;
+    auth = null;
+    saveAuth(null);
+    stationSecrets = {};
+    secretsLoaded = false;
+    state.editing = null;
+    state.revealed = null;
+    closeAccountMenu();
+    renderAccount();
+    renderPanel();
+    showToast(reason === 'expired' ? 'warn' : 'info',
+        reason === 'expired' ? 'Your sign-in is no longer valid. Sign in again' : 'Signed out');
+}
+
+function renderAccount() {
+    const btn = $('btn-account');
+    if (!auth) {
+        btn.classList.remove('is-signed-in');
+        btn.innerHTML = ic('user');
+        btn.title = 'Sign in';
+        btn.setAttribute('aria-label', 'Sign in');
+        closeAccountMenu();
+        return;
+    }
+    const email = (auth.user && auth.user.email) || '';
+    btn.classList.add('is-signed-in');
+    btn.innerHTML = `<span class="account-avatar-sm">${escHtml((email[0] || 'A').toUpperCase())}</span>`;
+    btn.title = `Signed in as ${email}`;
+    btn.setAttribute('aria-label', `Account: ${email}`);
+}
+
+function openAccountMenu() {
+    const email = (auth.user && auth.user.email) || '';
+    const since = auth.user && auth.user.since
+        ? new Date(auth.user.since).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '—';
+    const menu = $('account-menu');
+    menu.innerHTML = `
+        <div class="account-head">
+            <div class="account-avatar">${escHtml((email[0] || 'A').toUpperCase())}</div>
+            <div class="account-id">
+                <div class="account-name">${escHtml(email.split('@')[0])}</div>
+                <div class="account-email" title="${escHtml(email)}">${escHtml(email)}</div>
+            </div>
+        </div>
+        <div class="account-rows">
+            <div class="account-row"><span>Status</span><span class="account-badge">${ic('shield-check', 13)}Admin</span></div>
+            <div class="account-row"><span>Signed in</span><span>${escHtml(since)}</span></div>
+            <div class="account-row"><span>Session</span><span>No expiry</span></div>
+        </div>
+        <button id="account-signout" class="btn btn-muted account-signout" type="button">${ic('log-out', 15)}Sign out</button>`;
+    menu.hidden = false;
+    $('btn-account').setAttribute('aria-expanded', 'true');
+}
+
+function closeAccountMenu() {
+    $('account-menu').hidden = true;
+    $('btn-account').setAttribute('aria-expanded', 'false');
+}
+
+function onAccountClick() {
+    if (!auth) {
+        openSignIn();
+        return;
+    }
+    if ($('account-menu').hidden) openAccountMenu();
+    else closeAccountMenu();
 }
 
 function panelDescriptionTab(cell) {
@@ -938,41 +1346,8 @@ function panelDescriptionTab(cell) {
         : `<div class="desc-frame"><div class="desc-scroll"><div class="about-text is-empty">No description added yet.</div></div></div>`;
 }
 
-// Label above its content (access box)
-function field(label, contentHTML) {
-    return `<div class="field"><div class="field-label">${label}</div>${contentHTML}</div>`;
-}
-
 function kv(key, valueHTML) {
     return `<div class="kv"><span class="kv-key">${key}</span><span class="kv-val">${valueHTML}</span></div>`;
-}
-
-function accessSection(cell) {
-    const access = accessInfo(cell);
-    if (!access) {
-        return `
-        <div class="callout">
-            ${ic('alert-triangle', 15)}
-            <div><strong>Access not configured.</strong> No port or server type is set for this station yet.</div>
-        </div>`;
-    }
-
-    const folder = cell.projectDir && access.type !== 'browser'
-        ? field('Folder', `<div class="field-val">${escHtml(cell.projectDir)}</div>`) : '';
-    const steps = access.steps.length
-        ? field('Steps', `<ol class="steps">${access.steps.map(s => `<li>${escHtml(s)}</li>`).join('')}</ol>`)
-        : '';
-    const url = access.url ? `
-        <a class="url-box" href="${escHtml(access.url)}" target="_blank" rel="noopener">
-            ${ic('globe', 14)}<span>${escHtml(access.url.replace(/^https?:\/\//, ''))}</span>${ic('external-link', 13)}
-        </a>` : '';
-
-    return `
-    <div class="inset">
-        ${folder}
-        ${steps}
-        ${url}
-    </div>`;
 }
 
 // ─── Send alert: Desktop (push) and Mail (email) are separate buttons ────────
@@ -1320,6 +1695,7 @@ const HELPER_DOWNLOAD = 'downloads/NEOC-Alert-Helper.exe';
 const HELPER_VERSION = '1.1';   // keep in step with Program.Version in helper/NeocAlertHelper.cs
 let helperState = null;   // null = not checked yet, true = running, false = not found
 let helperVersion = '';
+let helperChecking = false;   // Refresh button spinning
 
 const isWindows = () => /Windows/i.test(navigator.userAgent);
 const isMobileDevice = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -1495,6 +1871,30 @@ function attachListeners() {
     $('btn-wall').addEventListener('click', () => setView('wall'));
     $('btn-archive').addEventListener('click', () => setView(state.view === 'archive' ? 'wall' : 'archive'));
 
+    // Account: sign in, or the signed-in user's menu
+    $('btn-account').addEventListener('click', e => {
+        e.stopPropagation();
+        onAccountClick();
+    });
+    $('account-menu').addEventListener('click', e => {
+        e.stopPropagation();
+        if (e.target.closest('#account-signout')) signOut();
+    });
+    document.addEventListener('click', () => {
+        if (!$('account-menu').hidden) closeAccountMenu();
+    });
+    $('signin-form').addEventListener('submit', submitSignIn);
+    $('signin-close').addEventListener('click', closeSignIn);
+    $('signin-show').addEventListener('click', () => {
+        const input = $('signin-password');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        $('signin-show').innerHTML = ic(show ? 'eye-off' : 'eye', 15);
+        $('signin-show').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        $('signin-show').title = show ? 'Hide password' : 'Show password';
+        input.focus();
+    });
+
     $('search-input').addEventListener('input', e => {
         handleSearch(e.target.value);
         $('search-clear').hidden = !e.target.value;
@@ -1623,9 +2023,31 @@ function attachListeners() {
             uninstallHelper();
             return;
         }
+        if (e.target.closest('#helper-refresh')) {
+            recheckHelper();
+            return;
+        }
+        if (e.target.closest('#helper-row a[download]')) {
+            watchForHelper();
+            return;
+        }
+        const rowAction = e.target.closest('[data-row-action]');
+        if (rowAction && onRowAction(rowAction.dataset.rowAction)) return;
         if (e.target.closest('#panel-push')) {
             const sel = getSelected();
             if (sel) togglePushHere(sel.cell);
+        }
+    });
+
+    // Editing a row: Enter saves, Esc cancels
+    $('panel').addEventListener('keydown', e => {
+        if (e.target.id !== 'row-edit-input') return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            onRowAction('save');
+        } else if (e.key === 'Escape') {
+            e.stopPropagation();
+            cancelEdit();
         }
     });
 
@@ -1634,6 +2056,15 @@ function attachListeners() {
         const typing = e.target.matches('input, textarea');
         if (e.key === 'Escape' && !$('alert-overlay').hidden) {
             acknowledgeAlert();
+            return;
+        }
+        if (e.key === 'Escape' && !$('signin-screen').hidden) {
+            closeSignIn();
+            return;
+        }
+        if (!$('signin-screen').hidden) return;
+        if (e.key === 'Escape' && !$('account-menu').hidden) {
+            closeAccountMenu();
             return;
         }
         if (e.key === 'Escape') {
