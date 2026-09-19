@@ -907,6 +907,7 @@ async function updateHelperRow() {
 
 function panelOverviewTab(cell) {
     return `
+    <div class="panel-portal-name" title="${escHtml(cell.portalName)}">${escHtml(cell.portalName || 'Untitled portal')}</div>
     <div class="info-rows">
         ${infoRow('Category', cell.category)}
         ${infoRow('Operator', cell.user, cell.mail || 'No email on file')}

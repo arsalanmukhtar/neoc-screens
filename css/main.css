@@ -1352,6 +1352,19 @@ code {
     line-height: var(--lh-relaxed);
 }
 
+/* Portal name at the top of the Overview tab — one line, trimmed with … */
+.panel-portal-name {
+    font-family: var(--font-head);
+    font-size: 1.125rem;    /* 18px */
+    font-weight: 800;
+    line-height: var(--lh-tight);
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: none;
+}
+
 /* Panel content blocks */
 .info-rows {
     display: flex;
