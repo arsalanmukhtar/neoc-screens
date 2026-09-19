@@ -651,7 +651,7 @@ function mStationOverview(cell) {
         ${mKv('Operator', escHtml(cell.user || '—'), cell.mail ? `<a class="m-kv-link" href="mailto:${escHtml(cell.mail)}">${escHtml(cell.mail)}</a>` : 'No email on file')}
         ${mKv('Network', escHtml(cell.ipAddress || '—'), '', isAdmin() ? mRowIcon('edit', 'pencil', 'Edit IP address', `data-field="ip"`) : '')}
         ${mKv('Server', access ? serverBadge(access) : '<span class="m-kv-muted">Not configured</span>')}
-        ${mKv('Password', pwValue, '', pwActions)}
+        ${mKv('PC Password', pwValue, '', pwActions)}
         ${mKv('Category', escHtml(cell.category || '—'))}
         ${dev ? mKv('Developer', escHtml(dev)) : ''}
     </div>
@@ -687,20 +687,21 @@ function mRowIcon(action, icon, label, extra = '') {
     return `<button class="m-icon-btn m-icon-btn-sm" type="button" data-m="${action}" ${extra} aria-label="${label}">${ic(icon, 18)}</button>`;
 }
 
-// The two alert buttons: push (devices) is the big one
+// Desktop rings the station's PCs, Mobile its phones
 function mAlertButtons(cell) {
     const id = displayNumber(cell);
-    const n = mDevices(id);
-    const enabled = pushStatusValue ? pushStatusValue.enabled && n > 0 : true;
     return `
     <div class="m-alert-actions">
-        <button class="m-btn m-btn-danger m-btn-xl" type="button" data-m="send-push" data-id="${escHtml(id)}" ${enabled ? '' : 'disabled'}>
-            ${ic('bell-ring', 20)}<span class="m-btn-stack"><span>Alert devices</span>
-            <small>${pushStatusValue ? (n ? `${plural(n, 'device')} will ring` : 'No device registered') : 'Checking…'}</small></span>
-        </button>
-        <button class="m-btn m-btn-tonal m-btn-xl m-btn-mail" type="button" data-m="send-mail" data-id="${escHtml(id)}" ${cell.mail ? '' : 'disabled'}>
-            ${ic('mail', 20)}<span class="m-btn-stack"><span>Mail</span><small>${cell.mail ? 'Email' : 'No email'}</small></span>
-        </button>
+        ${Object.keys(ALERT_KINDS).map(kind => {
+            const n = deviceCount(id, kind);
+            const enabled = pushStatusValue ? pushStatusValue.enabled && n > 0 : true;
+            const { label, icon, device } = ALERT_KINDS[kind];
+            return `
+            <button class="m-btn m-btn-danger m-btn-xl" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}" ${enabled ? '' : 'disabled'}>
+                ${ic(icon, 20)}<span class="m-btn-stack"><span>${label}</span>
+                <small>${pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device}`) : 'Checking…'}</small></span>
+            </button>`;
+        }).join('')}
     </div>`;
 }
 
@@ -766,7 +767,7 @@ function renderAlertConfirm(entry) {
             <div class="m-confirm-sub">${escHtml(cell.pcNumber)} · Subgrid ${escHtml(cfg.label)}</div>
             <div class="m-confirm-user">${ic('user', 16)}${escHtml(cell.user || 'No operator')}</div>
         </div>
-        <p class="m-help">“Alert devices” rings every PC and phone registered for ${escHtml(displayNumber(cell))} with a full-screen alarm. “Mail” sends an email.</p>
+        <p class="m-help">“Desktop” rings the PCs and “Mobile” the phones that get ${escHtml(displayNumber(cell))}’s alerts, with a full-screen alarm.</p>
     </div>
     <div class="m-sheet-foot">${mAlertButtons(cell)}</div>`;
 }
@@ -822,12 +823,12 @@ function openEditSheet(number, field) {
     if (!hit) return;
     const value = field === 'ip' ? hit.cell.ipAddress : (stationSecrets[number] || '');
     openSheet(entry => `
-        ${sheetHead(field === 'ip' ? 'Edit IP address' : 'System password', `${escHtml(number)} · ${escHtml(hit.cell.pcNumber)}`)}
+        ${sheetHead(field === 'ip' ? 'Edit IP address' : 'PC password', `${escHtml(number)} · ${escHtml(hit.cell.pcNumber)}`)}
         <div class="m-sheet-body">
             <label class="m-field">
-                <span class="m-field-label">${field === 'ip' ? 'IP address' : 'Password'}</span>
+                <span class="m-field-label">${field === 'ip' ? 'IP address' : 'PC password'}</span>
                 <input id="m-edit-input" class="m-input" type="text" data-m-input="edit" value="${escHtml(entry.data.value)}"
-                    ${field === 'ip' ? 'inputmode="decimal" placeholder="172.18.1.112"' : 'placeholder="System password"'}
+                    ${field === 'ip' ? 'inputmode="decimal" placeholder="172.18.1.112"' : 'placeholder="PC password"'}
                     autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
             </label>
             <p class="m-help">${field === 'ip'
@@ -948,7 +949,6 @@ function mOnClick(e) {
             }
             break;
         case 'send-push': mSendPush(el); break;
-        case 'send-mail': mSendMail(el); break;
         case 'toggle-here': mToggleHere(el); break;
         case 'stop-alerts': mStopAlerts(el); break;
         case 'test-alarm': showAlertOverlay({ stationId: 'TEST', pc: 'THIS PHONE', at: new Date().toISOString(), test: true }); break;
@@ -1055,16 +1055,8 @@ async function mSendPush(el) {
     const hit = mStation(el.dataset.id);
     if (!hit) return;
     mBusy(el, true, 'Sending');
-    await sendDesktopAlert(hit.cell, null);
+    await sendDeviceAlert(hit.cell, el.dataset.kind, null);
     mRefresh();
-}
-
-async function mSendMail(el) {
-    const hit = mStation(el.dataset.id);
-    if (!hit) return;
-    mBusy(el, true, 'Sending');
-    await sendMailAlert(hit.cell, hit.cfg.id, null);
-    if (el.isConnected) mBusy(el, false);
 }
 
 async function mToggleHere(el) {

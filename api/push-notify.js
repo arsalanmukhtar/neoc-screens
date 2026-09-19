@@ -1,7 +1,8 @@
-// POST /api/push-notify { stationId, pc, portal } → push the alert to every PC registered for the station
+// POST /api/push-notify { stationId, pc, portal, target: 'desktop' | 'mobile' }
+//   → push the alert to the station's PCs (desktop) or phones (mobile)
 // The message text is built here, so callers cannot push arbitrary content.
 
-import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean, syncCounts } from './_push.js';
+import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean, syncCounts, deviceKind, KINDS } from './_push.js';
 
 const RATE_LIMIT = 10;   // alerts per station per minute
 
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const stationId = body.stationId;
     if (!isStationId(stationId)) return res.status(400).json({ error: 'Unknown station' });
+    const target = KINDS.includes(body.target) ? body.target : null;   // null: every device (older callers)
 
     try {
         const rateKey = `push:rate:${stationId}`;
@@ -36,7 +38,8 @@ export default async function handler(req, res) {
         });
 
         const key = stationKey(stationId);
-        const entries = Object.entries((await redis.hgetall(key)) || {});
+        const entries = Object.entries((await redis.hgetall(key)) || {})
+            .filter(([, value]) => !target || deviceKind(parseRecord(value)) === target);
         const outcomes = await Promise.all(entries.map(async ([endpoint, value]) => {
             const record = parseRecord(value);
             if (!record || !record.subscription) {
@@ -60,6 +63,7 @@ export default async function handler(req, res) {
         const tally = type => outcomes.filter(o => o === type).length;
         if (tally('expired')) await syncCounts([stationId]);
         return res.status(200).json({
+            target,
             total: outcomes.length,
             sent: tally('sent'),
             failed: tally('failed'),

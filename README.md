@@ -66,7 +66,7 @@ Each station supports these fields:
     pc: 13,                      // shown as PC-13
     user: 'Name',                // operator, shown as "Operator"
     developer: 'Name',           // portal developer, shown as "Developer" (optional)
-    mail: 'name@example.com',    // recipient for "Send Alert" (optional)
+    mail: 'name@example.com',    // operator's email, shown in the panel (optional)
     ip: '1.112',                 // last two octets → 172.18.1.112
     portal: 'Portal Name',
     category: 'Hydromet',        // portal category (optional)
@@ -129,8 +129,9 @@ Files: `manifest.webmanifest`, `sw.js` (service worker) and `icons/`.
 
 The side panel has two alert buttons, so each alert goes out on one channel only:
 
-- **Desktop** pushes a Windows notification to the PC registered for that station. It stays on screen until dismissed. The button is greyed out until a PC is registered. The full-screen alert comes from the **NEOC Alert Helper** (below). Only where the helper isn't running (phones, Macs, or a PC without it) does the dashboard show its own pulsing alert instead.
-- **Mail** emails the operator (EmailJS). It is greyed out when the station has no email.
+- **Desktop** rings only the station's registered **PCs**: a Windows notification that stays until dismissed, and the full-screen alert from the **NEOC Alert Helper** (below). Where the helper isn't running, the dashboard shows its own pulsing alert instead.
+- **Mobile** rings only the station's registered **phones** (see Phone app): a notification, and the full-screen red alarm when the app is open.
+- Each button is greyed out until the station has a PC / phone registered. Every device records whether it is a PC or a phone when it registers.
 
 **Register a PC:** on the operator's PC, open the dashboard (or the installed app), select **their own** station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.
 
@@ -141,7 +142,7 @@ Each PC receives alerts for **one station only**. Picking another station (**Swi
 2. Vercel project → **Settings → Environment Variables**: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (`mailto:` + a contact email). Generate the keys with `npx web-push generate-vapid-keys`; keep the private key secret.
 3. **Redeploy.** `https://<site>/api/push-config` should then show `"enabled": true`.
 
-Until this is done, Send Alert keeps working by email only.
+Until this is done, the Desktop and Mobile buttons stay greyed out.
 
 ### Full-screen alerts: NEOC Alert Helper (Windows)
 
@@ -165,7 +166,7 @@ On a phone the same URL opens an app-style layout (`js/mobile.js`, `css/mobile.c
 
 - **Bottom navigation**: Home, Stations, the red **Alert** button in the middle, Team, More. Details open in bottom sheets (drag down or press Back to close).
 - **Home → Alerts on this phone → Choose station**: this phone then rings for that station (one station per phone, same as PCs).
-- **Alert** button: pick a station, then **Alert devices** (rings its PCs and phones) or **Mail**.
+- **Alert** button: pick a station, then **Desktop** (rings its PCs) or **Mobile** (rings its phones).
 - **Incoming alert**: full-screen flashing red screen with a siren and vibration until **Acknowledge**; when the app is closed, a notification (vibrates on Android) opens it. Sound and vibration can be switched off under **More**, where there is also a test.
 
 Install: Android (Chrome) → menu → **Install app**. iPhone (Safari, iOS 16.4+) → **Share → Add to Home Screen**; on iPhone alerts only work in the installed app, and the phone vibrates only for the notification (iOS doesn't let web apps vibrate).
@@ -222,7 +223,7 @@ Because IP edits commit to `main`, run `git pull` before pushing local changes.
 | Screen wall | All 5 blocks in one row, drawn to scale; each cell shows portal number + PC |
 | Block browser | Cards for the focused block, with per-block filter and sort (portal / PC) |
 | Side panel | Click any cell or card — Overview / Access / About tabs, no popups |
-| Send alert | **Desktop** (push notification to the station's PC) or **Mail** (email to the operator), asking them to return to their workstation |
+| Send alert | **Desktop** (the station's PCs) or **Mobile** (the station's phones), asking the operator to return to their workstation |
 | Search | Highlights cells by PC, user, IP, portal name/number/description; Enter selects the first match |
 | Dark/Light | Theme toggle; follows the system theme until changed, then persisted to localStorage |
 | Archive | Stations with `archived: true` in data.js appear in the Archive view |

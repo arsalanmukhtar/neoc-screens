@@ -346,15 +346,11 @@ html.m-app {
     opacity: 0.85;
 }
 
-/* Send alert: big red button + narrower Mail */
+/* Send alert: Desktop + Mobile, side by side */
 .m-alert-actions {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr 1fr;
     gap: var(--sp-2-5);
-}
-
-.m-btn-mail {
-    min-width: 108px;
 }
 
 .m-foot-label {
@@ -1136,7 +1132,7 @@ button.m-list-item:active {
 }
 
 .m-kv-label {
-    width: 78px;
+    width: 84px;
     flex: none;
     font-size: var(--fs-xs);
     font-weight: var(--fw-semibold);

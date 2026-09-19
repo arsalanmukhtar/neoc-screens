@@ -1,8 +1,9 @@
-// POST   /api/push-subscribe { stationId, subscription, label }  → this PC receives the station's alerts
+// POST   /api/push-subscribe { stationId, subscription, label, kind: 'desktop' | 'mobile' }
+//                                                                → this device receives the station's alerts
 //                                                                  (and no other station's: one station per PC)
 // DELETE /api/push-subscribe { endpoint }                         → this PC stops receiving alerts
 
-import { redis, pushReady, isStationId, stationKey, clean, removeFromStations, syncCounts, MAX_PCS_PER_STATION } from './_push.js';
+import { redis, pushReady, isStationId, stationKey, clean, removeFromStations, syncCounts, MAX_PCS_PER_STATION, KINDS } from './_push.js';
 
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
@@ -26,6 +27,7 @@ export default async function handler(req, res) {
             const record = {
                 subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
                 label: clean(body.label, 80),
+                kind: KINDS.includes(body.kind) ? body.kind : undefined,
                 at: new Date().toISOString(),
             };
             await redis.hset(key, { [sub.endpoint]: JSON.stringify(record) });

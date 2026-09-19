@@ -1289,7 +1289,7 @@ code {
     flex: 1;
 }
 
-/* Station panel: "Send alert" label over the Desktop / Mail buttons */
+/* Station panel: "Send alert" label over the Desktop / Mobile buttons */
 .panel-foot-alerts {
     flex-direction: column;
 }

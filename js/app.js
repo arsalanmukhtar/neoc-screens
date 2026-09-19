@@ -20,13 +20,6 @@ const state = {
     revealed: null,           // cell id whose system password is shown in plain text
 };
 
-// ─── EmailJS Config (hardcoded) ───────────────────────────────────────────────
-// Sign up at https://www.emailjs.com — free tier: 200 emails/month
-// Create a Service (Gmail/Outlook), an Email Template, then paste the IDs below.
-const EJS_PUBLIC_KEY = 'Hf7j1r_wnpLPK0CLf';   // Account → API Keys
-const EJS_SERVICE_ID = 'service_c59muoj';            // Email Services tab
-const EJS_TEMPLATE_ID = 'template_vofg9ml';           // Email Templates tab
-
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
@@ -822,27 +815,28 @@ function renderPanelContent() {
     <div class="panel-body${state.panelTab === 'description' ? ' is-desc' : ''}" role="tabpanel">${body}</div>
     <div class="panel-foot panel-foot-alerts">
         <div class="foot-label">Send alert</div>
-        <div class="foot-actions">${desktopAlertButton(cell)}${mailAlertButton(cell)}</div>
+        <div class="foot-actions">${deviceAlertButton(cell, 'desktop')}${deviceAlertButton(cell, 'mobile')}</div>
     </div>`;
-    updateDesktopButton(cell);
+    updateAlertButtons(cell);
 }
 
 // Desktop: push notification to the PC(s) registered for this station
-function desktopAlertButton(cell) {
+// Alert buttons: Desktop rings the station's PCs, Mobile its phones (each only when it has one)
+const ALERT_KINDS = {
+    desktop: { label: 'Desktop', icon: 'monitor', device: 'PC' },
+    mobile: { label: 'Mobile', icon: 'smartphone', device: 'phone' },
+};
+
+const deviceCount = (id, kind) =>
+    (pushStatusValue && pushStatusValue.kinds && pushStatusValue.kinds[id] && pushStatusValue.kinds[id][kind]) || 0;
+
+function deviceAlertButton(cell, kind) {
     const id = displayNumber(cell);
     const known = pushStatusValue;
-    const n = known && known.stations ? known.stations[id] || 0 : null;
+    const n = known ? deviceCount(id, kind) : null;
     const off = known && (!known.enabled || !n);
-    return `<button id="panel-alert-desktop" class="btn btn-danger btn-lg" type="button" data-station="${escHtml(id)}"
-        ${off ? 'disabled' : ''} title="${escHtml(desktopAlertTitle(id, known, n))}">${ic('monitor', 15)}Desktop</button>`;
-}
-
-// Mail: email to the operator
-function mailAlertButton(cell) {
-    const attrs = cell.mail
-        ? `title="Email ${escHtml(cell.user)} at ${escHtml(cell.mail)}"`
-        : 'disabled title="No email on file for this operator"';
-    return `<button id="panel-alert-mail" class="btn btn-danger btn-lg" type="button" ${attrs}>${ic('mail', 15)}Mail</button>`;
+    return `<button id="panel-alert-${kind}" class="btn btn-danger btn-lg" type="button" data-station="${escHtml(id)}" data-kind="${kind}"
+        ${off ? 'disabled' : ''} title="${escHtml(alertButtonTitle(id, kind, known, n))}">${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}</button>`;
 }
 
 // One labelled row: label on the left, value (+ optional meta text / extra HTML) on the right
@@ -1029,7 +1023,7 @@ function serverRow(cell) {
 function passwordRow(cell) {
     const id = displayNumber(cell);
     const password = stationSecrets[id] || '';
-    if (isEditing(cell, 'password')) return editRow('Password', 'password', password, 'System password');
+    if (isEditing(cell, 'password')) return editRow('PC Password', 'password', password, 'PC password');
 
     let body;
     if (!isAdmin()) {
@@ -1055,7 +1049,7 @@ function passwordRow(cell) {
     }
     return `
     <div class="info-row">
-        <div class="info-row-label">Password</div>
+        <div class="info-row-label">PC Password</div>
         <div class="info-row-body">${body}</div>
     </div>`;
 }
@@ -1383,63 +1377,27 @@ function setAlertBusy(btn, busy, idleHTML) {
     btn.innerHTML = busy ? '<span class="spinner" aria-hidden="true"></span>Sending' : idleHTML;
 }
 
-async function sendMailAlert(cell, gridId, btn = $('panel-alert-mail'), idle = `${ic('mail', 15)}Mail`) {
-    const toEmail = cell.mail;
-    const toName = cell.user;
-    if (!toEmail) {
-        showToast('warn', `No email set for ${cell.pcNumber}`);
-        return;
-    }
-    if (typeof emailjs === 'undefined') {
-        showToast('error', 'Email service unavailable — check the internet connection');
-        return;
-    }
-    const timestamp = new Date().toLocaleString('en-US', { hour12: false });
-    setAlertBusy(btn, true, idle);
-    try {
-        await emailjs.send(
-            EJS_SERVICE_ID,
-            EJS_TEMPLATE_ID,
-            {
-                to_email: toEmail,
-                to_name: toName,
-                message: `You are requested to return to your workstation (${cell.pcNumber}) and resume operations on the ${cell.portalName} portal.`,
-                pc_number: cell.pcNumber,
-                portal: cell.portalName,
-                subgrid: gridId,
-                ip_address: cell.ipAddress,
-                timestamp: timestamp,
-            },
-            EJS_PUBLIC_KEY
-        );
-        console.log(`[Alert] MAIL SENT | ${toName} <${toEmail}> | ${timestamp}`);
-        showToast('success', `Mail alert sent to ${toName}`);
-    } catch (err) {
-        console.error(`[Alert] MAIL FAILED | ${toName} <${toEmail}> | ${timestamp} |`, err);
-        showToast('error', 'Mail alert failed — see console');
-    } finally {
-        if (btn && btn.isConnected) setAlertBusy(btn, false, idle);   // the panel may show another station by now
-    }
-}
-
-async function sendDesktopAlert(cell, btn = $('panel-alert-desktop'), idle = `${ic('monitor', 15)}Desktop`) {
+// kind: 'desktop' rings the station's PCs, 'mobile' its phones
+async function sendDeviceAlert(cell, kind, btn = $(`panel-alert-${kind}`),
+    idle = `${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}`) {
     const id = displayNumber(cell);
+    const { label, device } = ALERT_KINDS[kind];
     setAlertBusy(btn, true, idle);
-    const result = await pushAlert(cell);
+    const result = await pushAlert(cell, kind);
     if (btn && btn.isConnected) setAlertBusy(btn, false, idle);
 
-    console.log(`[Alert] DESKTOP | ${id} |`, result);
+    console.log(`[Alert] ${kind.toUpperCase()} | ${id} |`, result);
     if (result.error) {
-        showToast('error', `Desktop alert failed — ${result.error}`);
+        showToast('error', `${label} alert failed — ${result.error}`);
     } else if (result.sent) {
-        showToast('success', `Desktop alert sent to ${cell.user} · ${result.sent} PC${result.sent === 1 ? '' : 's'}`);
+        showToast('success', `${label} alert sent to ${cell.user || id} · ${result.sent} ${device}${result.sent === 1 ? '' : 's'}`);
     } else if (result.failed) {
-        showToast('error', 'Desktop alert could not be delivered — see console');
+        showToast('error', `${label} alert could not be delivered — see console`);
     } else {
-        showToast('warn', `No PC receives ${id}'s alerts yet`);
+        showToast('warn', `No ${device} receives ${id}'s alerts yet`);
     }
     await getPushStatus(true);   // counts may have changed (expired devices are removed)
-    updateDesktopButton(cell);
+    updateAlertButtons(cell);
     updateWallState();
     emit('push');
 }
@@ -1502,10 +1460,11 @@ async function pushApi(method, body) {
     if (!res.ok) throw new Error(`${res.status} ${(await res.json().catch(() => ({}))).error || ''}`.trim());
 }
 
+const deviceKindHere = () => (isMobileDevice() ? 'mobile' : 'desktop');
 const pcLabel = () => `${navigator.userAgentData?.platform || navigator.platform || 'PC'} · ${new Date().toLocaleDateString('en-GB')}`;
 
 // Send the alert to every PC registered for this station → { total, sent, failed, expired } or { error }
-async function pushAlert(cell) {
+async function pushAlert(cell, kind) {
     if (!window.isSecureContext) return { error: 'only available on the website or installed app' };
     const cfg = await getPushConfig();
     if (!cfg.enabled) return { error: 'not set up on the server' };
@@ -1513,7 +1472,7 @@ async function pushAlert(cell) {
         const res = await fetch('api/push-notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ stationId: displayNumber(cell), pc: cell.pcNumber, portal: cell.portalName }),
+            body: JSON.stringify({ stationId: displayNumber(cell), pc: cell.pcNumber, portal: cell.portalName, target: kind }),
         });
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
@@ -1542,22 +1501,27 @@ function getPushStatus(force = false) {
     return promise;
 }
 
-function desktopAlertTitle(id, status, n) {
-    if (!status) return `Send a desktop notification to ${id}'s PC`;
-    if (!status.enabled) return 'Desktop alerts are not available here';
-    if (!n) return `No PC receives ${id}'s alerts yet. On the operator's PC: This PC → Receive alerts here`;
-    return `Send a desktop notification to ${n} PC${n === 1 ? '' : 's'} for ${id}`;
+function alertButtonTitle(id, kind, status, n) {
+    const { device } = ALERT_KINDS[kind];
+    if (!status) return `Alert ${id}'s ${device}`;
+    if (!status.enabled) return 'Alerts are not available here';
+    if (!n) return kind === 'desktop'
+        ? `No PC receives ${id}'s alerts yet. On the operator's PC: Alerts → Receive alerts here`
+        : `No phone receives ${id}'s alerts yet. In the phone app: Home → Choose station`;
+    return `Ring ${n} ${device}${n === 1 ? '' : 's'} for ${id}`;
 }
 
-// Enable the Desktop button only when the station has a registered PC
-async function updateDesktopButton(cell) {
+// Enable Desktop / Mobile only when the station has a registered PC / phone
+async function updateAlertButtons(cell) {
     const id = displayNumber(cell);
     const status = await getPushStatus();
-    const btn = $('panel-alert-desktop');
-    if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
-    const n = (status.stations && status.stations[id]) || 0;
-    btn.disabled = !status.enabled || !n;
-    btn.title = desktopAlertTitle(id, status, n);
+    Object.keys(ALERT_KINDS).forEach(kind => {
+        const btn = $(`panel-alert-${kind}`);
+        if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
+        const n = deviceCount(id, kind);
+        btn.disabled = !status.enabled || !n;
+        btn.title = alertButtonTitle(id, kind, status, n);
+    });
 }
 
 // Side panel "This PC" row: this PC receives ONE station's alerts as system notifications.
@@ -1614,7 +1578,7 @@ async function updatePushHere(cell) {
     }
     try {
         const sub = await currentSubscription(cfg.publicKey, true);
-        await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() });
+        await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel(), kind: deviceKindHere() });
         saveLocalPushStation(id);
         await getPushStatus(true);
         updateWallState();
@@ -1637,7 +1601,7 @@ async function refreshPushRegistrations() {
     if (!cfg.enabled) return;
     try {
         const sub = await currentSubscription(cfg.publicKey, true);
-        await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel() });
+        await pushApi('POST', { stationId: id, subscription: sub.toJSON(), label: pcLabel(), kind: deviceKindHere() });
         saveLocalPushStation(id);
     } catch (err) {
         console.warn('[Push] refresh', err);
@@ -2035,14 +1999,10 @@ function attachListeners() {
             clearSelection();
             return;
         }
-        if (e.target.closest('#panel-alert-desktop')) {
+        const alertBtn = e.target.closest('#panel-alert-desktop, #panel-alert-mobile');
+        if (alertBtn) {
             const sel = getSelected();
-            if (sel) sendDesktopAlert(sel.cell);
-            return;
-        }
-        if (e.target.closest('#panel-alert-mail')) {
-            const sel = getSelected();
-            if (sel) sendMailAlert(sel.cell, sel.cfg.id);
+            if (sel) sendDeviceAlert(sel.cell, alertBtn.dataset.kind);
             return;
         }
         if (e.target.closest('#helper-test')) {

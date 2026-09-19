@@ -35,20 +35,40 @@ export const stationKey = id => `push:station:${id}`;
 
 export const MAX_PCS_PER_STATION = 10;
 
-// Device count per station, kept in one hash so /api/push-status is a single read
+// Device count per station and kind, kept in one hash so /api/push-status is a single read
 export const COUNTS_KEY = 'push:counts';
+export const COUNTS_READY_KEY = 'push:counts:v2';   // set once the tally has been built with kinds
 
+// Fields per station: "<id>|desktop" and "<id>|mobile" = how many PCs / phones get its alerts
 export async function syncCounts(ids) {
     const list = [...new Set(ids)].filter(Boolean);
     if (!list.length) return;
     const pipe = redis.pipeline();
-    list.forEach(id => pipe.hlen(stationKey(id)));
-    const lens = await pipe.exec();
+    list.forEach(id => pipe.hgetall(stationKey(id)));
+    const all = await pipe.exec();
     const set = {};
     const gone = [];
-    list.forEach((id, i) => { const n = Number(lens[i]) || 0; if (n > 0) set[id] = n; else gone.push(id); });
+    list.forEach((id, i) => {
+        const counts = { desktop: 0, mobile: 0 };
+        Object.values(all[i] || {}).forEach(value => { counts[deviceKind(parseRecord(value))]++; });
+        KINDS.forEach(kind => {
+            if (counts[kind]) set[`${id}|${kind}`] = counts[kind];
+            else gone.push(`${id}|${kind}`);
+        });
+        gone.push(id);   // older total-only field
+    });
     if (Object.keys(set).length) await redis.hset(COUNTS_KEY, set);
     if (gone.length) await redis.hdel(COUNTS_KEY, ...gone);
+}
+
+// PCs and phones are alerted separately
+export const KINDS = ['desktop', 'mobile'];
+
+// Devices registered before kinds existed: tell them apart by their label (the browser's platform)
+export function deviceKind(record) {
+    if (!record) return 'desktop';
+    if (KINDS.includes(record.kind)) return record.kind;
+    return /iphone|ipad|ipod|android|arm|aarch/i.test(record.label || '') ? 'mobile' : 'desktop';
 }
 
 // A PC receives alerts for ONE station: drop its subscription from every station except `keep`
