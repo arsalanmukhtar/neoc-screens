@@ -67,7 +67,7 @@ function svgIcon(name, size = 16) {
 }
 
 // Solid red bell on the wall cell whose alerts this browser receives
-const BELL_SOLID = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">'
+const BELL_SOLID = '<svg viewBox="0 0 24 24" width="14.3" height="14.3" fill="currentColor" aria-hidden="true">'
     + '<path d="M12 2a6 6 0 0 0-6 6c0 4.5-1.4 6-2.7 7.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8a6 6 0 0 0-6-6z"/>'
     + '<path d="M9.3 19a2.7 2.7 0 0 0 5.4 0z"/></svg>';
 
@@ -869,14 +869,13 @@ function helperRow(cell) {
 
 function helperRowInner() {
     const running = helperState === true;
-    const text = helperState === null ? 'Checking…'
-        : running ? 'Running · alerts cover the whole screen'
-            : 'Not running · alerts only show in the browser';
+    const text = helperState === null ? 'Checking…' : running ? 'Running' : 'Not running';
     const action = running
         ? `<button id="helper-test" class="btn btn-sm btn-muted push-btn" type="button"
             title="Show a full-screen test alert on this PC">${ic('monitor', 13)}Test</button>`
-        : `<a class="btn btn-sm btn-primary push-btn" href="${HELPER_DOWNLOAD}" download
-            title="Windows helper that shows alerts full-screen, on top of all windows">${ic('download', 13)}Download</a>`;
+        : `<a class="btn btn-sm btn-primary push-btn btn-icon" href="${HELPER_DOWNLOAD}" download
+            aria-label="Download the alert helper"
+            title="Download the Windows helper that shows alerts full-screen">${ic('download', 14)}</a>`;
     return `
         <div class="info-row-label">Helper</div>
         <div class="info-row-body">

@@ -784,7 +784,7 @@ code {
     right: -6px;
     z-index: 1;
     line-height: 0;
-    color: #dc2626;
+    color: #ef4444;
     filter: drop-shadow(0 0 1px var(--elevated)) drop-shadow(0 0 1px var(--elevated));
 }
 
@@ -1338,6 +1338,16 @@ code {
 /* "This PC" row: button at the right edge */
 .push-btn {
     margin-left: auto;
+}
+
+/* Icon-only small button (Helper → Download) */
+.btn-sm.btn-icon {
+    width: 28px;
+    padding: 0;
+}
+
+#helper-row .info-row-meta {
+    white-space: nowrap;
 }
 
 /* Server badge on the Network row sits at the right edge */
