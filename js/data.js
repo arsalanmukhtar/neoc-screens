@@ -26,7 +26,7 @@ const GRID_CONFIG = [
     {
         id: 'G1', label: 'G1', rows: 3, cols: 2, colorKey: 'outer',
         stations: [
-            { id: 1, pc: 13, user: 'Hajra Qadeer', developer: '', mail: 'hajraqadeer26@gmail.com', ip: '1.113', portal: 'Regional Hazard Watch', category: '', desc: SAMPLE_DESC, portalPort: '5500', portalPath: 'regional-hazard-watch/index.html', serverType: 'vscode', projectDir: 'D:\\Portals\\Regional-Hazard-Watch' },
+            { id: 1, pc: 13, user: 'Hajra Qadeer', developer: '', mail: 'hajraqadeer26@gmail.com', ip: '1.112', portal: 'Regional Hazard Watch', category: '', desc: SAMPLE_DESC, portalPort: '5500', portalPath: 'regional-hazard-watch/index.html', serverType: 'vscode', projectDir: 'D:\\Portals\\Regional-Hazard-Watch' },
             { id: 2, pc: 10, user: 'Shehzad Ali', developer: '', mail: 'shehzadalikhan586@gmail.com', ip: '1.123', portal: 'Global Planetary Dynamics', category: '', desc: SAMPLE_DESC, portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 3, pc: 40, user: 'Syeda Saleha Ali', developer: '', mail: '', ip: '1.82', portal: 'Global Satellite Feed', category: '', desc: SAMPLE_DESC, portalPort: '', portalPath: '', serverType: '', projectDir: '' },
             { id: 4, pc: 44, user: 'Abdul Hanan', developer: '', mail: 'abdulhanan.geo@gmail.com', ip: '0.8', portal: 'Global Oceanic & Atmospheric Oscillations', category: '', desc: SAMPLE_DESC, portalPort: '', portalPath: '', serverType: '', projectDir: '' },
