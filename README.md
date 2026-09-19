@@ -159,6 +159,21 @@ Server code: `api/` (Vercel functions) and `package.json`. Notifications only ar
 
 ---
 
+## Phone app (Android / iPhone)
+
+On a phone the same URL opens an app-style layout (`js/mobile.js`, `css/mobile.css`) for operators away from their PC:
+
+- **Bottom navigation**: Home, Stations, the red **Alert** button in the middle, Team, More. Details open in bottom sheets (drag down or press Back to close).
+- **Home → Alerts on this phone → Choose station**: this phone then rings for that station (one station per phone, same as PCs).
+- **Alert** button: pick a station, then **Alert devices** (rings its PCs and phones) or **Mail**.
+- **Incoming alert**: full-screen flashing red screen with a siren and vibration until **Acknowledge**; when the app is closed, a notification (vibrates on Android) opens it. Sound and vibration can be switched off under **More**, where there is also a test.
+
+Install: Android (Chrome) → menu → **Install app**. iPhone (Safari, iOS 16.4+) → **Share → Add to Home Screen**; on iPhone alerts only work in the installed app, and the phone vibrates only for the notification (iOS doesn't let web apps vibrate).
+
+The layout switches automatically on phones. `?mobile=1` shows it on a PC for testing, `?mobile=0` switches back (More → **Desktop layout** does the same on a phone).
+
+---
+
 ## Admin: sign in, IP addresses and system passwords
 
 The person icon at the top right opens the **Sign in** screen (one admin account). Once signed in it shows the account's initial; click it for the email, **Admin** status and **Sign out**. A sign-in has no expiry: the browser stays signed in until Sign out.

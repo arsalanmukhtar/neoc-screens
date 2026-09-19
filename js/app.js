@@ -31,6 +31,10 @@ const EJS_TEMPLATE_ID = 'template_vofg9ml';           // Email Templates tab
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
+// Tells the phone layout (js/mobile.js) that shared state changed:
+// 'auth', 'secrets', 'push', 'station', 'alert-shown', 'alert-ack'
+const emit = (name, detail) => window.dispatchEvent(new CustomEvent(`neoc:${name}`, { detail }));
+
 // ─── Icons (Lucide) ───────────────────────────────────────────────────────────
 const ICONS = {
     'search': '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
@@ -1084,25 +1088,7 @@ async function saveEdit(cell) {
         btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
     }
     try {
-        const data = await authFetch('/api/station-admin', {
-            method: 'POST',
-            body: JSON.stringify({ stationId: id, field, value: input.value }),
-        });
-        if (field === 'ip') {
-            cell.ipAddress = `172.18.${data.ip}`;
-            const cfg = GRID_CONFIG.find(g => GRID_DATA[g.id].includes(cell));
-            const station = cfg && cfg.stations.find(s => s.id === cell.stationId);
-            if (station) station.ip = data.ip;
-            showToast('success', data.changed
-                ? `${id} IP saved to data.js. Live for everyone in about a minute`
-                : `${id} IP unchanged`);
-            renderBrowser();
-            updateWallState();
-        } else {
-            if (data.password) stationSecrets[id] = data.password;
-            else delete stationSecrets[id];
-            showToast('success', data.password ? `${id} system password saved` : `${id} system password cleared`);
-        }
+        await updateStationField(cell, field, input.value);
         state.editing = null;
         renderPanel();
     } catch (err) {
@@ -1116,6 +1102,32 @@ async function saveEdit(cell) {
         }
         input.focus();
     }
+}
+
+// Saves an admin edit (IP → data.js on GitHub, password → Redis) and updates this page
+async function updateStationField(cell, field, value) {
+    const id = displayNumber(cell);
+    const data = await authFetch('/api/station-admin', {
+        method: 'POST',
+        body: JSON.stringify({ stationId: id, field, value }),
+    });
+    if (field === 'ip') {
+        cell.ipAddress = `172.18.${data.ip}`;
+        const cfg = GRID_CONFIG.find(g => GRID_DATA[g.id].includes(cell));
+        const station = cfg && cfg.stations.find(s => s.id === cell.stationId);
+        if (station) station.ip = data.ip;
+        showToast('success', data.changed
+            ? `${id} IP saved to data.js. Live for everyone in about a minute`
+            : `${id} IP unchanged`);
+        renderBrowser();
+        updateWallState();
+    } else {
+        if (data.password) stationSecrets[id] = data.password;
+        else delete stationSecrets[id];
+        showToast('success', data.password ? `${id} system password saved` : `${id} system password cleared`);
+    }
+    emit('station', { id });
+    return data;
 }
 
 async function copyPassword(cell) {
@@ -1219,6 +1231,7 @@ async function loadSecrets() {
     }
     secretsLoaded = true;
     if (!state.editing) renderPanel();
+    emit('secrets');
 }
 
 function openSignIn() {
@@ -1297,6 +1310,7 @@ function signOut(reason) {
 }
 
 function renderAccount() {
+    emit('auth');
     const btn = $('btn-account');
     if (!auth) {
         btn.classList.remove('is-signed-in');
@@ -1369,7 +1383,7 @@ function setAlertBusy(btn, busy, idleHTML) {
     btn.innerHTML = busy ? '<span class="spinner" aria-hidden="true"></span>Sending' : idleHTML;
 }
 
-async function sendMailAlert(cell, gridId) {
+async function sendMailAlert(cell, gridId, btn = $('panel-alert-mail'), idle = `${ic('mail', 15)}Mail`) {
     const toEmail = cell.mail;
     const toName = cell.user;
     if (!toEmail) {
@@ -1381,8 +1395,6 @@ async function sendMailAlert(cell, gridId) {
         return;
     }
     const timestamp = new Date().toLocaleString('en-US', { hour12: false });
-    const btn = $('panel-alert-mail');
-    const idle = `${ic('mail', 15)}Mail`;
     setAlertBusy(btn, true, idle);
     try {
         await emailjs.send(
@@ -1406,17 +1418,15 @@ async function sendMailAlert(cell, gridId) {
         console.error(`[Alert] MAIL FAILED | ${toName} <${toEmail}> | ${timestamp} |`, err);
         showToast('error', 'Mail alert failed — see console');
     } finally {
-        if ($('panel-alert-mail') === btn) setAlertBusy(btn, false, idle);   // the panel may show another station by now
+        if (btn && btn.isConnected) setAlertBusy(btn, false, idle);   // the panel may show another station by now
     }
 }
 
-async function sendDesktopAlert(cell) {
+async function sendDesktopAlert(cell, btn = $('panel-alert-desktop'), idle = `${ic('monitor', 15)}Desktop`) {
     const id = displayNumber(cell);
-    const btn = $('panel-alert-desktop');
-    const idle = `${ic('monitor', 15)}Desktop`;
     setAlertBusy(btn, true, idle);
     const result = await pushAlert(cell);
-    if ($('panel-alert-desktop') === btn) setAlertBusy(btn, false, idle);
+    if (btn && btn.isConnected) setAlertBusy(btn, false, idle);
 
     console.log(`[Alert] DESKTOP | ${id} |`, result);
     if (result.error) {
@@ -1431,6 +1441,7 @@ async function sendDesktopAlert(cell) {
     await getPushStatus(true);   // counts may have changed (expired devices are removed)
     updateDesktopButton(cell);
     updateWallState();
+    emit('push');
 }
 
 // ─── Push alerts: which PCs receive a station's alerts (server: api/) ────────
@@ -1582,6 +1593,7 @@ async function updatePushHere(cell) {
             saveLocalPushStation(null);
             await getPushStatus(true);
             updateWallState();
+            emit('push');
             showToast('info', `This ${deviceWord()} no longer receives alerts for ${id}`);
         } catch (err) {
             console.error('[Push]', err);
@@ -1606,6 +1618,7 @@ async function updatePushHere(cell) {
         saveLocalPushStation(id);
         await getPushStatus(true);
         updateWallState();
+        emit('push');
         showToast('success', current
             ? `This ${deviceWord()} now receives alerts for ${id} only (moved from ${current})`
             : `This ${deviceWord()} now receives alerts for ${id}`);
@@ -1781,6 +1794,7 @@ function showAlertOverlay(alert) {
         + (alertOverlay.count > 1 ? ` · ${alertOverlay.count} ALERTS` : '');
     overlay.hidden = false;
     $('alert-ack').focus();
+    emit('alert-shown', alert);
 
     // Blink the window title so the alert is noticed from the taskbar
     clearInterval(alertOverlay.titleTimer);
@@ -1792,6 +1806,8 @@ function showAlertOverlay(alert) {
 }
 
 async function acknowledgeAlert() {
+    if ($('alert-overlay').hidden) return;
+    emit('alert-ack');
     $('alert-overlay').hidden = true;
     alertOverlay.count = 0;
     clearInterval(alertOverlay.titleTimer);
@@ -1811,7 +1827,7 @@ function initAlertOverlay() {
         navigator.serviceWorker.addEventListener('message', async e => {
             if (!e.data || e.data.type !== 'neoc-alert') return;
             // The desktop helper shows it full-screen; the browser only steps in when the helper isn't running
-            if (await sendToHelper(e.data)) {
+            if (!isMobileDevice() && await sendToHelper(e.data)) {
                 if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
                 return;
             }
@@ -1825,7 +1841,7 @@ function initAlertOverlay() {
         const hit = findWallStation(station);
         const at = params.get('at');
         history.replaceState(null, '', location.pathname);
-        pingHelper().then(running => {
+        (isMobileDevice() ? Promise.resolve(false) : pingHelper()).then(running => {
             if (!running) showAlertOverlay({ stationId: station, pc: hit ? hit.cell.pcNumber : '', at });
         });
     }
@@ -1847,7 +1863,10 @@ function initPwa() {
     window.addEventListener('appinstalled', () => {
         installPrompt = null;
         $('btn-install').hidden = true;
-        showToast('success', 'Installed — open NEOC Dashboard from the Start menu or taskbar');
+        showToast('success', isMobileDevice()
+            ? 'Installed. Open NEOC from your home screen'
+            : 'Installed — open NEOC Dashboard from the Start menu or taskbar');
+        emit('push');
     });
     const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
     const iOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

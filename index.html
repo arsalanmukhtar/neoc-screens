@@ -27,6 +27,18 @@
                 t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             }
             document.documentElement.setAttribute('data-theme', t);
+
+            // Phones get the app layout (js/mobile.js). ?mobile=1 / ?mobile=0 force it on / off.
+            var pref = null, q = null;
+            try {
+                q = new URLSearchParams(location.search).get('mobile');
+                if (q === '1') localStorage.setItem('ndma_layout', 'mobile');
+                if (q === '0') localStorage.setItem('ndma_layout', 'desktop');
+                pref = localStorage.getItem('ndma_layout');
+            } catch (e) { }
+            var phone = /iPhone|iPod|Android.+Mobile|Mobile.+Firefox/i.test(navigator.userAgent)
+                || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600);
+            if (pref === 'mobile' || (phone && pref !== 'desktop')) document.documentElement.classList.add('m-app');
         })();
     </script>
 
@@ -36,6 +48,7 @@
         href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&display=swap" />
     <link rel="stylesheet" href="css/variables.css" />
     <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/mobile.css" />
 </head>
 
 <body>
@@ -244,6 +257,10 @@
     <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
 
     <!-- ═══ INCOMING ALERT (desktop alert received on this PC) ══════════════ -->
+    <!-- Phone layout (filled by js/mobile.js) -->
+    <div id="m-root" class="m-root" hidden></div>
+    <div id="m-sheets" class="m-sheets"></div>
+
     <!-- Admin sign-in (edits IP addresses and system passwords) -->
     <div id="signin-screen" class="signin-screen" role="dialog" aria-modal="true" aria-labelledby="signin-title" hidden>
         <form id="signin-form" class="signin-card" novalidate>
@@ -304,6 +321,7 @@
     <script src="js/data.js"></script>
     <script src="js/developers.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/mobile.js"></script>
 </body>
 
 </html>

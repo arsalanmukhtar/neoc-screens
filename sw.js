@@ -3,7 +3,7 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v7';
+const CACHE = 'neoc-cd-v8';
 const SHELL = [
     './',
     'index.html',
@@ -12,6 +12,8 @@ const SHELL = [
     'js/data.js',
     'js/developers.js',
     'js/app.js',
+    'js/mobile.js',
+    'css/mobile.css',
     'manifest.webmanifest',
     'icons/icon-192.png',
     'icons/icon-512.png',
@@ -50,6 +52,8 @@ self.addEventListener('fetch', event => {
     );
 });
 
+const IS_PHONE = /Android|iPhone|iPad|iPod/i.test(self.navigator.userAgent);
+
 // Alert pushed from another PC (api/push-notify) → system notification that stays until dismissed
 self.addEventListener('push', event => {
     let data = {};
@@ -72,6 +76,8 @@ self.addEventListener('push', event => {
             tag: data.tag || 'neoc-alert',
             renotify: true,
             requireInteraction: true,
+            silent: false,
+            vibrate: [700, 300, 700, 300, 700, 300, 1200],   // Android phones
             icon: 'icons/icon-192.png',
             badge: 'icons/icon-192.png',
             data: alert,
@@ -81,8 +87,8 @@ self.addEventListener('push', event => {
             .then(windows => windows.forEach(w => w.postMessage(alert))),
         // Badge on the installed app's taskbar icon
         self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null,
-        // Full-screen alert via the NEOC Alert Helper, if it runs on this PC
-        fetch('http://127.0.0.1:47800/alert', {
+        // Full-screen alert via the NEOC Alert Helper, if it runs on this PC (never on phones)
+        IS_PHONE ? null : fetch('http://127.0.0.1:47800/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(alert),
