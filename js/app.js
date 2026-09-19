@@ -805,7 +805,7 @@ function renderPanelContent() {
         <button id="panel-close" class="icon-btn icon-btn-sm" type="button" aria-label="Clear selection" title="Clear selection (Esc)">${ic('x', 14)}</button>
     </div>
     <div class="panel-tabs" role="tablist">${tabs}</div>
-    <div class="panel-body" role="tabpanel">${body}</div>
+    <div class="panel-body${state.panelTab === 'description' ? ' is-desc' : ''}" role="tabpanel">${body}</div>
     <div class="panel-foot panel-foot-alerts">
         <div class="foot-label">Send alert</div>
         <div class="foot-actions">${desktopAlertButton(cell)}${mailAlertButton(cell)}</div>
@@ -923,8 +923,8 @@ function panelOverviewTab(cell) {
 
 function panelDescriptionTab(cell) {
     return hasDescription(cell)
-        ? `<div class="about-box is-fill"><div class="about-text rich-text">${richText(cell.portalDescription)}</div></div>`
-        : `<div class="about-box is-fill"><div class="about-text is-empty">No description added yet.</div></div>`;
+        ? `<div class="desc-frame"><div class="desc-scroll"><div class="about-text rich-text">${richText(cell.portalDescription)}</div></div></div>`
+        : `<div class="desc-frame"><div class="desc-scroll"><div class="about-text is-empty">No description added yet.</div></div></div>`;
 }
 
 // Label above its content (access box)

@@ -1616,9 +1616,38 @@ code {
     border-radius: 0 var(--r-md) var(--r-md) 0;
 }
 
-/* Description tab: box fills the tab and grows with long text (panel body scrolls) */
-.about-box.is-fill {
-    flex: 1 0 auto;
+/* Description tab: the box fills the tab with equal gaps above and below; only its text
+   scrolls, and the scrollbar sits in the gutter to the right of the box */
+.panel-body.is-desc {
+    overflow: hidden;
+}
+
+.desc-frame {
+    --desc-gutter: var(--sp-5);   /* = .panel-body side padding */
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-right: calc(-1 * var(--desc-gutter));
+}
+
+.desc-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0 var(--desc-gutter) 0 0;
+    background: var(--block-soft);
+    border-left: 3px solid var(--block);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+.desc-scroll {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--sp-3-5) calc(var(--sp-3-5) + var(--desc-gutter)) var(--sp-3-5) calc(var(--sp-3-5) + 3px);
 }
 
 .about-text {
