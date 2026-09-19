@@ -757,7 +757,7 @@ code {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
     line-height: 1;
     overflow: hidden;
     transition: border-color var(--t-fast), background var(--t-fast), opacity var(--t-base), box-shadow var(--t-fast);
@@ -776,37 +776,32 @@ code {
     overflow: visible;
 }
 
-/* Round badge on the cell's top-right corner */
+/* Solid red bell on the cell's top-right corner */
 .cell-bell {
     display: none;
     position: absolute;
     top: -6px;
     right: -6px;
     z-index: 1;
-    width: 15px;
-    height: 15px;
-    border-radius: var(--r-full);
-    background: var(--warn);
-    color: #ffffff;
-    box-shadow: 0 0 0 2px var(--elevated);
-    align-items: center;
-    justify-content: center;
+    line-height: 0;
+    color: #dc2626;
+    filter: drop-shadow(0 0 1px var(--elevated)) drop-shadow(0 0 1px var(--elevated));
 }
 
 .cell.has-alerts .cell-bell {
-    display: flex;
+    display: block;
 }
 
 .cell-num {
     font-family: var(--font-head);
-    font-size: 0.8125rem;   /* 13px */
+    font-size: 0.75rem;     /* 12px */
     font-weight: var(--fw-bold);
     color: var(--ink);
     white-space: nowrap;
 }
 
 .cell-pc {
-    font-size: var(--fs-xs);
+    font-size: 0.6875rem;   /* 11px */
     font-weight: var(--fw-semibold);
     color: var(--ink-soft);
     white-space: nowrap;
@@ -1889,21 +1884,35 @@ code {
 
 .alert-title {
     font-family: var(--font-head);
-    font-size: 1.375rem;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #dc2626;
+}
+
+.alert-station {
+    font-family: var(--font-head);
+    font-size: 1.25rem;
     font-weight: var(--fw-bold);
+    letter-spacing: 0.06em;
     color: var(--ink);
 }
 
 .alert-body {
-    text-wrap: balance;
     font-size: var(--fs-base);
-    line-height: var(--lh-relaxed);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.06em;
     color: var(--ink-soft);
 }
 
 .alert-time {
     font-size: var(--fs-xs);
+    letter-spacing: 0.08em;
     color: var(--muted-foreground);
+}
+
+.alert-ack {
+    letter-spacing: 0.08em;
 }
 
 .alert-ack {
@@ -1944,28 +1953,11 @@ code {
     cursor: progress;
 }
 
-/* Alerts button: green dot when desktop notifications are on */
-#btn-alerts {
-    position: relative;
-}
-
-#btn-alerts[data-state="granted"]::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 7px;
-    height: 7px;
-    border-radius: var(--r-full);
-    background: var(--toast-success);
-    box-shadow: 0 0 0 2px var(--ink);
-}
-
 /* ─── Responsive ──────────────────────────────────────── */
 @media (max-width: 1400px) {
     :root {
         --panel-width: 400px;
-        --cell-size: 44px;
+        --cell-size: 40px;
     }
 }
 
@@ -1975,8 +1967,8 @@ code {
     }
 }
 
-/* Below ~1780px the Developers widget wraps under the wall — give it a fixed height there */
-@media (max-width: 1780px) {
+/* Below ~1700px the Developers widget wraps under the wall — give it a fixed height there */
+@media (max-width: 1699px) {
     .wall-aside {
         flex-basis: 100%;
         height: 220px;

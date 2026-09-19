@@ -3,7 +3,7 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v5';
+const CACHE = 'neoc-cd-v6';
 const SHELL = [
     './',
     'index.html',
@@ -63,6 +63,7 @@ self.addEventListener('push', event => {
         title: data.title || 'NEOC alert',
         body: data.body || '',
         stationId: data.stationId || '',
+        pc: data.pc || '',
         at: data.at || new Date().toISOString(),
     };
     event.waitUntil(Promise.all([

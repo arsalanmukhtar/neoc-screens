@@ -66,8 +66,8 @@ function svgIcon(name, size = 16) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
 
-// Small solid bell shown on wall cells whose alerts reach at least one device
-const BELL_SOLID = '<svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor" aria-hidden="true">'
+// Solid red bell on the wall cell whose alerts this browser receives
+const BELL_SOLID = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">'
     + '<path d="M12 2a6 6 0 0 0-6 6c0 4.5-1.4 6-2.7 7.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8a6 6 0 0 0-6-6z"/>'
     + '<path d="M9.3 19a2.7 2.7 0 0 0 5.4 0z"/></svg>';
 
@@ -476,8 +476,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initPwa();
     initAlertOverlay();
     initSheetGestures();
-    getPushStatus().then(updateWallState);
-    setInterval(() => { if (!document.hidden) getPushStatus(true).then(updateWallState); }, 60000);
     refreshPushRegistrations();
     tickClock();
     setInterval(tickClock, 1000);
@@ -564,10 +562,10 @@ function updateWallState() {
             el.classList.toggle('is-match', Boolean(match));
             el.classList.toggle('is-miss', Boolean(q) && !match);
             el.classList.toggle('is-selected', Boolean(sel) && sel.cellId === cell.id);
-            // Bell: this station's alerts reach at least one device
-            const devices = (pushStatusValue && pushStatusValue.stations && pushStatusValue.stations[displayNumber(cell)]) || 0;
-            el.classList.toggle('has-alerts', devices > 0);
-            el.title = el.dataset.title + (devices ? ` · alerts on ${devices} device${devices === 1 ? '' : 's'}` : '');
+            // Bell: the station whose alerts this browser receives (one per PC / device)
+            const mine = localPushStation() === displayNumber(cell);
+            el.classList.toggle('has-alerts', mine);
+            el.title = el.dataset.title + (mine ? ` · alerts on this ${deviceWord()}` : '');
         });
 
         block.classList.toggle('is-focused', idx === state.activeIndex);
@@ -1271,58 +1269,7 @@ function ensureNotifyPermission() {
     if (!canNotify()) return Promise.resolve('unsupported');
     if (Notification.permission !== 'default') return Promise.resolve(Notification.permission);
     return Promise.resolve(Notification.requestPermission())
-        .catch(() => Notification.permission)
-        .then(result => { updateAlertsButton(); return result; });
-}
-
-async function notifyDesktop(title, body, tag) {
-    if (!canNotify() || Notification.permission !== 'granted') return;
-    const options = { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' };
-    try {
-        const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
-        if (reg) await reg.showNotification(title, options);
-        else new Notification(title, options);
-    } catch (err) {
-        console.warn('[Notify]', err);
-    }
-}
-
-function notifyState() {
-    return canNotify() ? Notification.permission : 'unsupported';
-}
-
-function updateAlertsButton() {
-    const btn = $('btn-alerts');
-    const st = notifyState();
-    btn.dataset.state = st;
-    btn.title = {
-        granted: 'Desktop notifications are on',
-        denied: 'Desktop notifications are blocked',
-        default: 'Turn on desktop notifications',
-        unsupported: 'Desktop notifications are not supported here',
-    }[st];
-    btn.querySelector('[data-icon], svg')?.replaceWith(
-        document.createRange().createContextualFragment(ic(st === 'denied' ? 'bell-off' : 'bell', 14)));
-}
-
-async function onAlertsClick() {
-    const st = notifyState();
-    if (st === 'unsupported') {
-        showToast('warn', 'This browser does not support desktop notifications');
-    } else if (st === 'denied') {
-        showToast('warn', 'Notifications are blocked — allow them from the lock icon in the address bar');
-    } else if (st === 'granted') {
-        showToast('success', 'Desktop notifications are on — sent a test notification');
-        notifyDesktop('Notifications are on', 'You will be notified here when an alert is sent.', 'test');
-    } else {
-        const result = await ensureNotifyPermission();
-        if (result === 'granted') {
-            showToast('success', 'Desktop notifications turned on');
-            notifyDesktop('Notifications are on', 'You will be notified here when an alert is sent.', 'test');
-        } else {
-            showToast('warn', 'Notifications were not allowed');
-        }
-    }
+        .catch(() => Notification.permission);
 }
 
 // ─── Alert helper: Windows tray app that shows alerts full-screen ────────────
@@ -1379,11 +1326,9 @@ function showAlertOverlay(alert) {
     const overlay = $('alert-overlay');
     alertOverlay.count = overlay.hidden ? 1 : alertOverlay.count + 1;
     const when = alert.at ? new Date(alert.at) : new Date();
-    $('alert-title').textContent = alert.title || 'NEOC alert';
-    // Keep "PC-43" on one line (non-breaking hyphen)
-    $('alert-body').textContent = (alert.body || '').replace(/PC-(\S+)/g, 'PC‑$1');
-    $('alert-time').textContent = `Received ${when.toLocaleTimeString('en-US', { hour12: false })}`
-        + (alertOverlay.count > 1 ? ` · ${alertOverlay.count} alerts` : '');
+    $('alert-station').textContent = [alert.stationId, alert.pc].filter(Boolean).join(' · ').toUpperCase();
+    $('alert-time').textContent = `RECEIVED ${when.toLocaleTimeString('en-US', { hour12: false })}`
+        + (alertOverlay.count > 1 ? ` · ${alertOverlay.count} ALERTS` : '');
     overlay.hidden = false;
     $('alert-ack').focus();
 
@@ -1413,11 +1358,14 @@ async function acknowledgeAlert() {
 function initAlertOverlay() {
     $('alert-ack').addEventListener('click', acknowledgeAlert);
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', e => {
-            if (e.data && e.data.type === 'neoc-alert') {
-                showAlertOverlay(e.data);
-                sendToHelper(e.data);   // full-screen alert (also sent by the service worker)
+        navigator.serviceWorker.addEventListener('message', async e => {
+            if (!e.data || e.data.type !== 'neoc-alert') return;
+            // The desktop helper shows it full-screen; the browser only steps in when the helper isn't running
+            if (await sendToHelper(e.data)) {
+                if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+                return;
             }
+            showAlertOverlay(e.data);
         });
     }
     // Opened from an alert notification: ?alert=GCOP&at=…
@@ -1425,14 +1373,11 @@ function initAlertOverlay() {
     const station = params.get('alert');
     if (station) {
         const hit = findWallStation(station);
-        showAlertOverlay({
-            title: `NEOC alert · ${station}`,
-            body: hit
-                ? `You are requested to return to your workstation (${hit.cell.pcNumber}) and resume operations on the ${hit.cell.portalName} portal.`
-                : 'You are requested to return to your workstation.',
-            at: params.get('at'),
-        });
+        const at = params.get('at');
         history.replaceState(null, '', location.pathname);
+        pingHelper().then(running => {
+            if (!running) showAlertOverlay({ stationId: station, pc: hit ? hit.cell.pcNumber : '', at });
+        });
     }
 }
 
@@ -1468,7 +1413,6 @@ function initPwa() {
         installPrompt = null;
         $('btn-install').hidden = true;
     });
-    updateAlertsButton();
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -1487,7 +1431,6 @@ function attachListeners() {
     $('btn-theme').addEventListener('click', toggleTheme);
     $('btn-wall').addEventListener('click', () => setView('wall'));
     $('btn-archive').addEventListener('click', () => setView(state.view === 'archive' ? 'wall' : 'archive'));
-    $('btn-alerts').addEventListener('click', onAlertsClick);
 
     $('search-input').addEventListener('input', e => {
         handleSearch(e.target.value);

@@ -57,6 +57,7 @@ namespace NeocAlertHelper
         public string Title;
         public string Body;
         public string StationId;
+        public string Pc;
         public string At;
     }
 
@@ -124,8 +125,7 @@ namespace NeocAlertHelper
         static AlertMessage TestAlert()
         {
             var a = new AlertMessage();
-            a.Title = "NEOC alert · TEST";
-            a.Body = "This is a test. Alerts for this PC will look like this. Click Acknowledge to close it.";
+            a.StationId = "TEST";
             a.At = DateTime.Now.ToString("o");
             return a;
         }
@@ -245,6 +245,7 @@ namespace NeocAlertHelper
         static readonly Color Bright = Color.FromArgb(0xDC, 0x26, 0x26);
 
         readonly Label titleLabel = new Label();
+        readonly Label stationLabel = new Label();
         readonly Label bodyLabel = new Label();
         readonly Label timeLabel = new Label();
         readonly Button ackButton = new Button();
@@ -267,14 +268,22 @@ namespace NeocAlertHelper
             DoubleBuffered = true;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
+            // Minimal, all-caps text
+            titleLabel.Text = "ALERT";
             titleLabel.ForeColor = Color.White;
-            titleLabel.Font = new Font("Segoe UI", 44f, FontStyle.Bold);
+            titleLabel.Font = new Font("Segoe UI", 80f, FontStyle.Bold);
             titleLabel.TextAlign = ContentAlignment.MiddleCenter;
             titleLabel.BackColor = Color.Transparent;
 
+            stationLabel.ForeColor = Color.White;
+            stationLabel.Font = new Font("Segoe UI", 36f, FontStyle.Bold);
+            stationLabel.TextAlign = ContentAlignment.MiddleCenter;
+            stationLabel.BackColor = Color.Transparent;
+
+            bodyLabel.Text = "RETURN TO YOUR WORKSTATION";
             bodyLabel.ForeColor = Color.White;
             bodyLabel.Font = new Font("Segoe UI", 24f, FontStyle.Regular);
-            bodyLabel.TextAlign = ContentAlignment.TopCenter;
+            bodyLabel.TextAlign = ContentAlignment.MiddleCenter;
             bodyLabel.BackColor = Color.Transparent;
 
             timeLabel.ForeColor = Color.FromArgb(0xFE, 0xCA, 0xCA);
@@ -282,7 +291,7 @@ namespace NeocAlertHelper
             timeLabel.TextAlign = ContentAlignment.MiddleCenter;
             timeLabel.BackColor = Color.Transparent;
 
-            ackButton.Text = "Acknowledge";
+            ackButton.Text = "ACKNOWLEDGE";
             ackButton.Font = new Font("Segoe UI", 22f, FontStyle.Bold);
             ackButton.ForeColor = Bright;
             ackButton.BackColor = Color.White;
@@ -292,6 +301,7 @@ namespace NeocAlertHelper
             ackButton.Click += delegate { Acknowledge(); };
 
             Controls.Add(titleLabel);
+            Controls.Add(stationLabel);
             Controls.Add(bodyLabel);
             Controls.Add(timeLabel);
             Controls.Add(ackButton);
@@ -334,11 +344,13 @@ namespace NeocAlertHelper
 
         public void SetAlert(AlertMessage alert, int count)
         {
-            titleLabel.Text = string.IsNullOrEmpty(alert.Title) ? "NEOC alert" : alert.Title;
-            bodyLabel.Text = alert.Body ?? "";
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(alert.StationId)) parts.Add(alert.StationId);
+            if (!string.IsNullOrEmpty(alert.Pc)) parts.Add(alert.Pc);
+            stationLabel.Text = string.Join("  ·  ", parts.ToArray()).ToUpperInvariant();
             DateTime when;
             if (!DateTime.TryParse(alert.At, out when)) when = DateTime.Now;
-            timeLabel.Text = "Received " + when.ToLocalTime().ToString("HH:mm:ss") + (count > 1 ? "  ·  " + count + " alerts" : "");
+            timeLabel.Text = "RECEIVED " + when.ToLocalTime().ToString("HH:mm:ss") + (count > 1 ? "  ·  " + count + " ALERTS" : "");
             LayoutControls();
         }
 
@@ -347,11 +359,12 @@ namespace NeocAlertHelper
             int w = ClientSize.Width, h = ClientSize.Height;
             int width = Math.Min(w - 80, 1200);
             int x = (w - width) / 2;
-            int y = h / 2 - 190;
-            titleLabel.SetBounds(x, y, width, 90);
-            bodyLabel.SetBounds(x, y + 110, width, 150);
-            timeLabel.SetBounds(x, y + 270, width, 32);
-            ackButton.SetBounds((w - 320) / 2, y + 330, 320, 76);
+            int y = h / 2 - 230;
+            titleLabel.SetBounds(x, y, width, 150);
+            stationLabel.SetBounds(x, y + 160, width, 70);
+            bodyLabel.SetBounds(x, y + 235, width, 50);
+            timeLabel.SetBounds(x, y + 295, width, 32);
+            ackButton.SetBounds((w - 360) / 2, y + 360, 360, 80);
         }
 
         void Acknowledge()
@@ -519,6 +532,7 @@ namespace NeocAlertHelper
                         alert.Title = Str(json, "title", 120);
                         alert.Body = Str(json, "body", 400);
                         alert.StationId = Str(json, "stationId", 20);
+                        alert.Pc = Str(json, "pc", 20);
                         alert.At = Str(json, "at", 40);
                         onAlert(alert);
                         Respond(stream, 200, "OK", "{\"ok\":true}", origin);

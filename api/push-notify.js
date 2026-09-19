@@ -26,11 +26,12 @@ export default async function handler(req, res) {
         const pc = clean(body.pc, 20) || stationId;
         const portal = clean(body.portal, 60);
         const payload = JSON.stringify({
-            title: `NEOC alert · ${stationId}`,
-            body: `You are requested to return to your workstation (${pc}) and resume operations`
-                + (portal ? ` on the ${portal} portal.` : '.'),
+            title: `NEOC ALERT · ${stationId}`,
+            body: `RETURN TO YOUR WORKSTATION (${pc.toUpperCase()})`,
             tag: `neoc-alert-${stationId}`,
             stationId,
+            pc,
+            portal,
             at: new Date().toISOString(),
         });
 

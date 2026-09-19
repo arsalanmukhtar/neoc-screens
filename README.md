@@ -115,11 +115,11 @@ Edit `DEVELOPERS` in [js/developers.js](js/developers.js). The widget lists deve
 
 The dashboard is a **Progressive Web App**: in Chrome or Edge, click **Install app** in the top bar (or the install icon in the address bar) to install it as a desktop app with its own window, Start-menu entry and taskbar icon.
 
-- **Notifications:** click **Alerts** in the top bar to turn on desktop notifications. The first **Send Alert** also asks. Once allowed, every Send Alert shows a system notification in the Windows notification centre (green dot on Alerts = on).
+- **Notifications:** a device asks to allow notifications when **Receive alerts here** is clicked for its station (see below).
 - **Phones & tablets:** the layout adapts: tapping a station or portal opens the side panel as a bottom sheet (drag down or tap outside to close), and the wall swipes between blocks.
   - **Android (Chrome):** tap **Install** in the top bar or accept the install prompt.
   - **iPhone / iPad (Safari):** tap **Share → Add to Home Screen** (the Install button explains this). Device alerts on iOS need iOS 16.4+ and the app opened from the Home Screen.
-- **Bell on the wall:** a small bell on a cell means that station's alerts reach at least one device.
+- **Bell on the wall:** a red bell marks the station whose alerts **this** browser/device receives (one per device).
 - **Offline:** the app keeps a copy of its files and opens without a connection (sending alerts still needs internet).
 - Needs `https` (Vercel) or `localhost`. Opening `index.html` as a file works, but without install or notifications.
 
@@ -129,7 +129,7 @@ Files: `manifest.webmanifest`, `sw.js` (service worker) and `icons/`.
 
 The side panel has two alert buttons, so each alert goes out on one channel only:
 
-- **Desktop** pushes a Windows notification to the PC registered for that station. It stays on screen until dismissed. The button is greyed out until a PC is registered. If the dashboard is open on that PC, a pulsing alert also appears in the middle of its window until **Acknowledge** (or Esc) is pressed; the window title blinks and the installed app's taskbar icon gets a badge.
+- **Desktop** pushes a Windows notification to the PC registered for that station. It stays on screen until dismissed. The button is greyed out until a PC is registered. The full-screen alert comes from the **NEOC Alert Helper** (below). Only where the helper isn't running (phones, Macs, or a PC without it) does the dashboard show its own pulsing alert instead.
 - **Mail** emails the operator (EmailJS). It is greyed out when the station has no email.
 
 **Register a PC:** on the operator's PC, open the dashboard (or the installed app), select **their own** station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.

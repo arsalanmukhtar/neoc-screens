@@ -215,7 +215,7 @@ svg {
 
     /* Layout */
     --panel-width: 440px;
-    --cell-size: 50px;           /* screen-wall cell (square) */
+    --cell-size: 44px;           /* screen-wall cell (square) */
 
     /* Motion */
     --t-fast: 0.15s ease;
