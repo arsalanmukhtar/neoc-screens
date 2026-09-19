@@ -2080,6 +2080,11 @@ code {
     to { transform: rotate(360deg); }
 }
 
+.btn-sm .spinner {
+    width: 13px;
+    height: 13px;
+}
+
 .btn[aria-busy="true"] {
     opacity: 1;
     cursor: progress;

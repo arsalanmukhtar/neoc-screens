@@ -1164,7 +1164,24 @@ async function updateDesktopButton(cell) {
 
 // Side panel "This PC" row: this PC receives ONE station's alerts as system notifications.
 // Picking another station moves it there (the server removes it from the old one).
+// Spinner on the Alerts button while this device registers / unregisters; the panel re-renders after
 async function togglePushHere(cell) {
+    const btn = $('panel-push');
+    if (btn && btn.disabled) return;
+    const stopping = localPushStation() === displayNumber(cell);
+    if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        btn.innerHTML = `<span class="spinner" aria-hidden="true"></span>${stopping ? 'Stopping' : 'Activating'}`;
+    }
+    try {
+        await updatePushHere(cell);
+    } finally {
+        renderPanel();
+    }
+}
+
+async function updatePushHere(cell) {
     const id = displayNumber(cell);
     const current = localPushStation();
 
@@ -1183,7 +1200,6 @@ async function togglePushHere(cell) {
             console.error('[Push]', err);
             showToast('error', `Could not update this ${deviceWord()} — see console`);
         }
-        renderPanel();
         return;
     }
 
@@ -1210,7 +1226,6 @@ async function togglePushHere(cell) {
         console.error('[Push]', err);
         showToast('error', `Could not register this ${deviceWord()} — see console`);
     }
-    renderPanel();
 }
 
 // On start-up, re-send this PC's registration so the server has its current subscription
