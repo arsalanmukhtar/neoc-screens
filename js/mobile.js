@@ -831,7 +831,7 @@ function openEditSheet(number, field) {
                     autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
             </label>
             <p class="m-help">${field === 'ip'
-                ? 'Saved to data.js on GitHub. Everyone sees it in about a minute.'
+                ? 'Everyone sees the new IP in about a minute.'
                 : 'Only signed-in admins can see it. Leave empty to clear it.'}</p>
         </div>
         <div class="m-sheet-foot">

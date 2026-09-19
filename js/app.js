@@ -1117,14 +1117,14 @@ async function updateStationField(cell, field, value) {
         const station = cfg && cfg.stations.find(s => s.id === cell.stationId);
         if (station) station.ip = data.ip;
         showToast('success', data.changed
-            ? `${id} IP saved to data.js. Live for everyone in about a minute`
-            : `${id} IP unchanged`);
+            ? 'The IP has been updated'
+            : 'The IP is unchanged');
         renderBrowser();
         updateWallState();
     } else {
         if (data.password) stationSecrets[id] = data.password;
         else delete stationSecrets[id];
-        showToast('success', data.password ? `${id} system password saved` : `${id} system password cleared`);
+        showToast('success', data.password ? 'The password has been updated' : 'The password has been cleared');
     }
     emit('station', { id });
     return data;

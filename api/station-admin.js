@@ -61,7 +61,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ ok: true, ip, ...result });
         } catch (err) {
             console.error('[station-admin] GitHub', err);
-            return res.status(502).json({ error: `Could not save to GitHub: ${err.message}` });
+            return res.status(502).json({ error: 'The IP could not be updated. Try again' });
         }
     }
 
