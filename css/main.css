@@ -2103,7 +2103,7 @@ code {
 
 .icon-btn.is-signed-in:hover .account-avatar-sm,
 .icon-btn.is-signed-in[aria-expanded="true"] .account-avatar-sm {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
+    box-shadow: 0 0 0 2px var(--elevated), 0 0 0 4px var(--primary);
 }
 
 .account-avatar-sm,
@@ -2113,16 +2113,19 @@ code {
     color: var(--primary-foreground);
     font-family: var(--font-head);
     font-weight: 800;
+    line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    /* Outer ring with a small gap around the circle */
+    box-shadow: 0 0 0 2px var(--elevated), 0 0 0 3px color-mix(in srgb, var(--primary) 75%, transparent);
 }
 
 .account-avatar-sm {
     position: relative;
-    width: 34px;
-    height: 34px;
-    font-size: 0.9375rem;   /* 15px */
+    width: 32px;
+    height: 32px;
+    font-size: 1.125rem;    /* 18px */
     background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 80%, #ffffff), var(--primary));
     transition: box-shadow var(--t-fast);
 }
@@ -2131,10 +2134,10 @@ code {
 .account-avatar-sm::after {
     content: '';
     position: absolute;
-    right: -1px;
-    bottom: -1px;
-    width: 10px;
-    height: 10px;
+    right: -3px;
+    bottom: -3px;
+    width: 11px;
+    height: 11px;
     border-radius: var(--r-full);
     background: var(--toast-success);
     box-shadow: 0 0 0 2px var(--elevated);
@@ -2164,10 +2167,11 @@ code {
 }
 
 .account-avatar {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     flex: none;
-    font-size: 1.125rem;
+    margin: 3px;            /* room for the ring */
+    font-size: 1.5rem;      /* 24px */
 }
 
 .account-id {
