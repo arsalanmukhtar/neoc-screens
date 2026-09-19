@@ -2089,8 +2089,21 @@ code {
 }
 
 /* ─── Account (top-right) ─────────────────────────────── */
+/* Set apart from the other top-bar icons by a gap and a thin divider */
 .account {
     position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: var(--sp-2);
+    padding-left: var(--sp-4);
+    border-left: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+    .account {
+        margin-left: var(--sp-1);
+        padding-left: var(--sp-2-5);
+    }
 }
 
 /* Signed in: just the round avatar, no button background */
