@@ -814,14 +814,25 @@ function renderPanelContent() {
     <div class="panel-tabs" role="tablist">${tabs}</div>
     <div class="panel-body${state.panelTab === 'description' ? ' is-desc' : ''}" role="tabpanel">${body}</div>
     <div class="panel-foot panel-foot-alerts">
-        <div class="foot-label">Send alert</div>
+        <div class="foot-label">Send alert${inOfficeHours() ? '' : `<span class="foot-closed">Office hours only · ${OFFICE_HOURS_TEXT}</span>`}</div>
         <div class="foot-actions">${deviceAlertButton(cell, 'desktop')}${deviceAlertButton(cell, 'mobile')}</div>
     </div>`;
     updateAlertButtons(cell);
 }
 
 // Desktop: push notification to the PC(s) registered for this station
-// Alert buttons: Desktop rings the station's PCs, Mobile its phones (each only when it has one)
+// Alerts can only be sent Monday–Friday, 8:30 AM – 4:30 PM Pakistan time (UTC+5, no daylight saving)
+const OFFICE_HOURS_TEXT = 'Mon–Fri, 8:30 AM – 4:30 PM';
+function inOfficeHours(now = new Date()) {
+    const pk = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+    const day = pk.getUTCDay();                                  // 0 Sunday … 6 Saturday
+    const minutes = pk.getUTCHours() * 60 + pk.getUTCMinutes();
+    return day >= 1 && day <= 5 && minutes >= 8 * 60 + 30 && minutes < 16 * 60 + 30;
+}
+const OFF_HOURS_MSG = 'No alerts possible out of office hours';
+let officeOpen = inOfficeHours();   // re-checked every second by tickClock
+
+// Alert buttons: Desktop rings the station's PCs, Mobile its phones
 const ALERT_KINDS = {
     desktop: { label: 'Desktop', icon: 'monitor', device: 'PC' },
     mobile: { label: 'Mobile', icon: 'smartphone', device: 'phone' },
@@ -835,8 +846,10 @@ function deviceAlertButton(cell, kind) {
     const known = pushStatusValue;
     const n = known ? deviceCount(id, kind) : null;
     const off = known && !known.enabled;
-    return `<button id="panel-alert-${kind}" class="btn btn-danger btn-lg" type="button" data-station="${escHtml(id)}" data-kind="${kind}"
-        ${off ? 'disabled' : ''} title="${escHtml(alertButtonTitle(id, kind, known, n))}">${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}</button>`;
+    const closed = !inOfficeHours();
+    return `<button id="panel-alert-${kind}" class="btn btn-danger btn-lg${closed ? ' is-off-hours' : ''}" type="button" data-station="${escHtml(id)}" data-kind="${kind}"
+        ${off ? 'disabled' : ''} ${closed ? 'aria-disabled="true"' : ''}
+        title="${escHtml(closed ? `${OFF_HOURS_MSG} (${OFFICE_HOURS_TEXT})` : alertButtonTitle(id, kind, known, n))}">${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}</button>`;
 }
 
 // One labelled row: label on the left, value (+ optional meta text / extra HTML) on the right
@@ -1382,6 +1395,10 @@ async function sendDeviceAlert(cell, kind, btn = $(`panel-alert-${kind}`),
     idle = `${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}`) {
     const id = displayNumber(cell);
     const { label, device } = ALERT_KINDS[kind];
+    if (!inOfficeHours()) {
+        showToast('warn', OFF_HOURS_MSG);
+        return;
+    }
     setAlertBusy(btn, true, idle);
     const result = await pushAlert(cell, kind);
     if (btn && btn.isConnected) setAlertBusy(btn, false, idle);
@@ -1520,6 +1537,7 @@ async function updateAlertButtons(cell) {
         if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
         const n = deviceCount(id, kind);
         btn.disabled = !status.enabled;
+        if (!inOfficeHours()) return;
         btn.title = alertButtonTitle(id, kind, status, n);
     });
 }
@@ -1643,6 +1661,13 @@ function renderStatusBar() {
 
 // Urbanist has no tabular figures, so each digit gets a fixed-width slot to keep the clock from shifting
 function tickClock() {
+    // Office hours start or end: grey out / bring back the alert buttons
+    const open = inOfficeHours();
+    if (open !== officeOpen) {
+        officeOpen = open;
+        renderPanel();
+        emit('office');
+    }
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
     $('status-time').innerHTML = [...time]
         .map(ch => /\d/.test(ch) ? `<span class="clock-digit">${ch}</span>` : ch)
@@ -2000,6 +2025,10 @@ function attachListeners() {
             return;
         }
         const alertBtn = e.target.closest('#panel-alert-desktop, #panel-alert-mobile');
+        if (alertBtn && alertBtn.classList.contains('is-off-hours')) {
+            showToast('warn', OFF_HOURS_MSG);
+            return;
+        }
         if (alertBtn) {
             const sel = getSelected();
             if (sel) sendDeviceAlert(sel.cell, alertBtn.dataset.kind);

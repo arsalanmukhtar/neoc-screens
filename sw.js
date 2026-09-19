@@ -3,7 +3,7 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v10';
+const CACHE = 'neoc-cd-v11';
 
 // Alerts received on this device, newest first (read by the phone app's Recent alerts).
 // Kept in its own cache so app updates don't wipe it.

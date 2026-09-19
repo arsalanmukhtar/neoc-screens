@@ -61,6 +61,15 @@ export async function syncCounts(ids) {
     if (gone.length) await redis.hdel(COUNTS_KEY, ...gone);
 }
 
+// Alerts can only be sent Monday–Friday, 8:30 AM – 4:30 PM Pakistan time (UTC+5, no daylight saving)
+export const OFFICE_HOURS_TEXT = 'Mon–Fri, 8:30 AM – 4:30 PM';
+export function inOfficeHours(now = new Date()) {
+    const pk = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+    const day = pk.getUTCDay();                                  // 0 Sunday … 6 Saturday
+    const minutes = pk.getUTCHours() * 60 + pk.getUTCMinutes();
+    return day >= 1 && day <= 5 && minutes >= 8 * 60 + 30 && minutes < 16 * 60 + 30;
+}
+
 // PCs and phones are alerted separately
 export const KINDS = ['desktop', 'mobile'];
 

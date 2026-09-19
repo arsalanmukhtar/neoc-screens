@@ -2410,6 +2410,23 @@ body.signin-open {
     height: 13px;
 }
 
+/* Alert buttons out of office hours: grey, but a click explains why */
+.btn.is-off-hours,
+.btn.is-off-hours:hover {
+    background: var(--muted);
+    color: var(--muted-foreground);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.foot-closed {
+    margin-left: var(--sp-2);
+    font-weight: var(--fw-semibold);
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--muted-foreground);
+}
+
 .btn[aria-busy="true"] {
     opacity: 1;
     cursor: progress;

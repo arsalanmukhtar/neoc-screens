@@ -142,7 +142,7 @@ function mInit() {
     window.addEventListener('popstate', mOnPopState);
 
     // Shared state changed in app.js → redraw what shows it
-    ['auth', 'secrets', 'push', 'station'].forEach(name => window.addEventListener(`neoc:${name}`, mRefresh));
+    ['auth', 'secrets', 'push', 'station', 'office'].forEach(name => window.addEventListener(`neoc:${name}`, mRefresh));
     window.addEventListener('neoc:alert-shown', e => mAlarmStart(e.detail));
     window.addEventListener('neoc:alert-ack', mAlarmStop);
     window.addEventListener('beforeinstallprompt', () => setTimeout(mRefresh));
@@ -217,6 +217,10 @@ function mRenderTopbar() {
 }
 
 function mRenderNav() {
+    const closed = !inOfficeHours();
+    $('m-fab').classList.toggle('is-off-hours', closed);
+    $('m-fab').setAttribute('aria-disabled', String(closed));
+    $('m-nav').classList.toggle('is-off-hours', closed);
     $('m-nav').innerHTML = M_TABS.map(t => t.id === 'alert'
         ? `<div class="m-nav-item m-nav-fab-slot" aria-hidden="true"><span class="m-nav-label">Alert</span></div>`
         : `<button class="m-nav-item${M.tab === t.id ? ' is-active' : ''}" type="button" data-m="tab" data-tab="${t.id}"
@@ -740,16 +744,19 @@ function mRowIcon(action, icon, label, extra = '') {
 // Desktop rings the station's PCs, Mobile its phones
 function mAlertButtons(cell) {
     const id = displayNumber(cell);
+    const closed = !inOfficeHours();
     return `
-    <div class="m-alert-actions">
+    ${closed ? `<div class="m-off-hours">${ic('clock', 14)}Office hours only · ${OFFICE_HOURS_TEXT}</div>` : ''}
+    <div class="m-alert-actions${closed ? ' is-off-hours' : ''}">
         ${Object.keys(ALERT_KINDS).map(kind => {
             const n = deviceCount(id, kind);
             const enabled = pushStatusValue ? pushStatusValue.enabled : true;
             const { label, icon, device } = ALERT_KINDS[kind];
             return `
-            <button class="m-btn m-btn-danger m-btn-xl" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}" ${enabled ? '' : 'disabled'}>
+            <button class="m-btn m-btn-danger m-btn-xl${closed ? ' is-off-hours' : ''}" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}"
+                ${enabled ? '' : 'disabled'} ${closed ? 'aria-disabled="true"' : ''}>
                 ${ic(icon, 20)}<span class="m-btn-stack"><span>${label}</span>
-                <small>${pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device} registered`) : 'Checking…'}</small></span>
+                <small>${closed ? 'Out of office hours' : pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device} registered`) : 'Checking…'}</small></span>
             </button>`;
         }).join('')}
     </div>`;
@@ -989,7 +996,10 @@ function mOnClick(e) {
                 if (body) body.scrollTop = 0;
             }
             break;
-        case 'alert-sheet': openPickerSheet('alert'); break;
+        case 'alert-sheet':
+            if (inOfficeHours()) openPickerSheet('alert');
+            else showToast('warn', OFF_HOURS_MSG);
+            break;
         case 'register-sheet': openPickerSheet('register'); break;
         case 'pick': mPick(entry, el.dataset.id, el); break;
         case 'pick-back':
@@ -1103,6 +1113,10 @@ function mBusy(el, busy, label = '') {
 async function mSendPush(el) {
     const hit = mStation(el.dataset.id);
     if (!hit) return;
+    if (!inOfficeHours()) {
+        showToast('warn', OFF_HOURS_MSG);
+        return;
+    }
     mBusy(el, true, 'Sending');
     await sendDeviceAlert(hit.cell, el.dataset.kind, null);
     mRefresh();

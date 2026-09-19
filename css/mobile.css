@@ -346,6 +346,34 @@ html.m-app {
     opacity: 0.85;
 }
 
+/* Out of office hours: alert buttons and the Alert button turn grey */
+.m-btn.is-off-hours {
+    background: var(--muted);
+    color: var(--muted-foreground);
+    box-shadow: none;
+    opacity: 0.8;
+}
+
+.m-fab.is-off-hours {
+    background: var(--muted-foreground);
+    color: var(--elevated);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.m-nav.is-off-hours .m-nav-fab-slot .m-nav-label {
+    color: var(--muted-foreground);
+}
+
+.m-off-hours {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1-5);
+    margin-bottom: var(--sp-2-5);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--muted-foreground);
+}
+
 /* Send alert: Desktop + Mobile, side by side */
 .m-alert-actions {
     display: grid;

@@ -2,7 +2,7 @@
 //   → push the alert to the station's PCs (desktop) or phones (mobile)
 // The message text is built here, so callers cannot push arbitrary content.
 
-import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean, syncCounts, deviceKind, KINDS } from './_push.js';
+import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean, syncCounts, deviceKind, KINDS, inOfficeHours } from './_push.js';
 
 const RATE_LIMIT = 10;   // alerts per station per minute
 
@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     const stationId = body.stationId;
     if (!isStationId(stationId)) return res.status(400).json({ error: 'Unknown station' });
     const target = KINDS.includes(body.target) ? body.target : null;   // null: every device (older callers)
+    if (!inOfficeHours()) return res.status(403).json({ error: 'No alerts possible out of office hours', offHours: true });
 
     try {
         const rateKey = `push:rate:${stationId}`;
