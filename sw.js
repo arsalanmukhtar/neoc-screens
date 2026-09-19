@@ -3,7 +3,13 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v9';
+const CACHE = 'neoc-cd-v10';
+
+// Alerts received on this device, newest first (read by the phone app's Recent alerts).
+// Kept in its own cache so app updates don't wipe it.
+const LOG_CACHE = 'neoc-alert-log';
+const LOG_KEY = `${self.location.origin}/__neoc/alert-log`;
+const LOG_MAX = 20;
 const SHELL = [
     './',
     'index.html',
@@ -27,7 +33,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys()
-            .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== LOG_CACHE).map(k => caches.delete(k))))
             .then(() => self.clients.claim())
     );
 });
@@ -54,6 +60,19 @@ self.addEventListener('fetch', event => {
 
 const IS_PHONE = /Android|iPhone|iPad|iPod/i.test(self.navigator.userAgent);
 
+async function logAlert(alert) {
+    try {
+        const cache = await caches.open(LOG_CACHE);
+        const hit = await cache.match(LOG_KEY);
+        const log = hit ? await hit.json() : [];
+        if (log.some(item => item.stationId === alert.stationId && item.at === alert.at)) return;
+        log.unshift({ stationId: alert.stationId, pc: alert.pc, at: alert.at, ack: false });
+        await cache.put(LOG_KEY, new Response(JSON.stringify(log.slice(0, LOG_MAX)), {
+            headers: { 'Content-Type': 'application/json' },
+        }));
+    } catch (e) { /* storage unavailable */ }
+}
+
 // Alert pushed from another PC (api/push-notify) → system notification that stays until dismissed
 self.addEventListener('push', event => {
     let data = {};
@@ -70,7 +89,8 @@ self.addEventListener('push', event => {
         pc: data.pc || '',
         at: data.at || new Date().toISOString(),
     };
-    event.waitUntil(Promise.all([
+    // Record it first, so an open app reading the history after the message below sees it
+    event.waitUntil(logAlert(alert).then(() => Promise.all([
         self.registration.showNotification(alert.title, {
             body: alert.body,
             tag: data.tag || 'neoc-alert',
@@ -93,7 +113,7 @@ self.addEventListener('push', event => {
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(alert),
         }).catch(() => {}),
-    ]));
+    ])));
 });
 
 // Clicking a notification brings the dashboard to the front (or opens it) with the alert showing

@@ -834,7 +834,7 @@ function deviceAlertButton(cell, kind) {
     const id = displayNumber(cell);
     const known = pushStatusValue;
     const n = known ? deviceCount(id, kind) : null;
-    const off = known && (!known.enabled || !n);
+    const off = known && !known.enabled;
     return `<button id="panel-alert-${kind}" class="btn btn-danger btn-lg" type="button" data-station="${escHtml(id)}" data-kind="${kind}"
         ${off ? 'disabled' : ''} title="${escHtml(alertButtonTitle(id, kind, known, n))}">${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}</button>`;
 }
@@ -1511,7 +1511,7 @@ function alertButtonTitle(id, kind, status, n) {
     return `Ring ${n} ${device}${n === 1 ? '' : 's'} for ${id}`;
 }
 
-// Enable Desktop / Mobile only when the station has a registered PC / phone
+// Desktop / Mobile stay clickable; the tooltip says how many PCs / phones will ring
 async function updateAlertButtons(cell) {
     const id = displayNumber(cell);
     const status = await getPushStatus();
@@ -1519,7 +1519,7 @@ async function updateAlertButtons(cell) {
         const btn = $(`panel-alert-${kind}`);
         if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
         const n = deviceCount(id, kind);
-        btn.disabled = !status.enabled || !n;
+        btn.disabled = !status.enabled;
         btn.title = alertButtonTitle(id, kind, status, n);
     });
 }

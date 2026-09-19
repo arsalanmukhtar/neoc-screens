@@ -39,7 +39,49 @@ const M_TABS = [
 ];
 
 const M_PREFS = 'ndma_alarm_prefs';      // { sound, vibrate }
-const M_LOG = 'ndma_alert_log';          // alerts received on this phone (newest first, 20 max)
+const M_LOG = 'ndma_alert_log';          // earlier in-page history (moved into the log below)
+
+// Alerts received on this phone: the service worker (sw.js) writes them to this cache as they
+// arrive, even when the app is closed; the app reads them and marks them acknowledged.
+const LOG_CACHE = 'neoc-alert-log';
+const LOG_KEY = `${location.origin}/__neoc/alert-log`;
+let mAlertLog = [];
+
+async function mReadLog() {
+    try {
+        const cache = await caches.open(LOG_CACHE);
+        const hit = await cache.match(LOG_KEY);
+        let log = hit ? await hit.json() : [];
+        const old = mLoad(M_LOG, null);
+        if (old && old.length) {
+            // One-time move of the older in-page history
+            const seen = new Set(log.map(i => `${i.stationId}|${i.at}`));
+            log = [...log, ...old.filter(i => !seen.has(`${i.stationId}|${i.at}`))]
+                .sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20);
+            await mWriteLog(log);
+            localStorage.removeItem(M_LOG);
+        }
+        mAlertLog = log;
+    } catch (e) {
+        mAlertLog = mLoad(M_LOG, []);
+    }
+    return mAlertLog;
+}
+
+async function mWriteLog(log) {
+    mAlertLog = log.slice(0, 20);
+    try {
+        const cache = await caches.open(LOG_CACHE);
+        await cache.put(LOG_KEY, new Response(JSON.stringify(mAlertLog), { headers: { 'Content-Type': 'application/json' } }));
+    } catch (e) {
+        mSave(M_LOG, mAlertLog);
+    }
+}
+
+// Re-read the history and redraw (after an alert, or when the app comes back to the front)
+function mReloadLog() {
+    return mReadLog().then(mRefresh);
+}
 
 function mLoad(key, fallback) {
     try {
@@ -109,6 +151,14 @@ function mInit() {
     document.addEventListener('pointerdown', mUnlockAudio, { passive: true });
 
     getPushStatus().then(mRefresh);
+    mReloadLog();
+    // Alerts may have arrived while the app was in the background
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            mReloadLog();
+            getPushStatus(true).then(mRefresh);
+        }
+    });
     setInterval(() => { if (!document.hidden) getPushStatus(true).then(mRefresh); }, 60000);
     setInterval(mTickClock, 1000);
     mRender();
@@ -190,7 +240,7 @@ function mHome() {
     const cells = allVisibleCells();
     const configured = cells.filter(isConfigured).length;
     const ready = cells.filter(c => mDevices(displayNumber(c)) > 0).length;
-    const log = mLoad(M_LOG, []).slice(0, 3);
+    const log = mAlertLog.slice(0, 3);
 
     return `
     <section class="m-hero">
@@ -420,7 +470,7 @@ function mMore() {
         </div>
         <button class="m-list-item" type="button" data-m="alert-log">
             <span class="m-list-icon">${ic('history', 18)}</span>
-            <span class="m-list-text"><span class="m-list-title">Alert history</span><span class="m-list-sub">${plural(mLoad(M_LOG, []).length, 'alert')} on this phone</span></span>
+            <span class="m-list-text"><span class="m-list-title">Alert history</span><span class="m-list-sub">${plural(mAlertLog.length, 'alert')} on this phone</span></span>
             <span class="m-list-trail">${ic('chevron-right', 18)}</span>
         </button>
     </div>
@@ -694,12 +744,12 @@ function mAlertButtons(cell) {
     <div class="m-alert-actions">
         ${Object.keys(ALERT_KINDS).map(kind => {
             const n = deviceCount(id, kind);
-            const enabled = pushStatusValue ? pushStatusValue.enabled && n > 0 : true;
+            const enabled = pushStatusValue ? pushStatusValue.enabled : true;
             const { label, icon, device } = ALERT_KINDS[kind];
             return `
             <button class="m-btn m-btn-danger m-btn-xl" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}" ${enabled ? '' : 'disabled'}>
                 ${ic(icon, 20)}<span class="m-btn-stack"><span>${label}</span>
-                <small>${pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device}`) : 'Checking…'}</small></span>
+                <small>${pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device} registered`) : 'Checking…'}</small></span>
             </button>`;
         }).join('')}
     </div>`;
@@ -849,7 +899,7 @@ function openEditSheet(number, field) {
 
 function openAlertLogSheet() {
     openSheet(() => {
-        const log = mLoad(M_LOG, []);
+        const log = mAlertLog;
         return `
         ${sheetHead('Alert history', 'Alerts received on this phone')}
         <div class="m-sheet-body">
@@ -975,8 +1025,7 @@ function mOnClick(e) {
         case 'save-edit': mSaveEdit(entry); break;
         case 'alert-log': openAlertLogSheet(); break;
         case 'clear-log':
-            mSave(M_LOG, []);
-            mRefresh();
+            mWriteLog([]).then(mRefresh);
             break;
         case 'archive': openArchiveSheet(); break;
         case 'install': openInstallSheet(); break;
@@ -1142,11 +1191,7 @@ async function mAlarmStart(alert) {
     if (!IS_M) return;
     mAlarmStop(false);
     const prefs = alarmPrefs();
-    if (alert && !alert.test && alert.stationId) {
-        const log = mLoad(M_LOG, []);
-        log.unshift({ stationId: alert.stationId, pc: alert.pc || '', at: alert.at || new Date().toISOString(), ack: false });
-        mSave(M_LOG, log.slice(0, 20));
-    }
+    if (alert && !alert.test) mReloadLog();   // the service worker has recorded it
     if (prefs.sound) {
         mUnlockAudio();
         mSirenCycle();
@@ -1174,11 +1219,8 @@ function mAlarmStop(acknowledged = true) {
         alarm.lock = null;
     }
     if (acknowledged) {
-        const log = mLoad(M_LOG, []);
-        log.forEach(item => { item.ack = true; });
-        mSave(M_LOG, log);
         applyTheme(document.documentElement.getAttribute('data-theme'), false);   // restores the status bar colour
-        mRefresh();
+        mReadLog().then(log => mWriteLog(log.map(item => ({ ...item, ack: true })))).then(mRefresh);
     }
 }
 
