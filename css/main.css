@@ -2099,8 +2099,17 @@ code {
     position: relative;
 }
 
-.icon-btn.is-signed-in {
+/* Signed in: just the round avatar, no button background */
+.icon-btn.is-signed-in,
+.icon-btn.is-signed-in:hover {
     padding: 0;
+    background: transparent;
+    border-radius: var(--r-full);
+}
+
+.icon-btn.is-signed-in:hover .account-avatar-sm,
+.icon-btn.is-signed-in[aria-expanded="true"] .account-avatar-sm {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .account-avatar-sm,
@@ -2116,10 +2125,25 @@ code {
 }
 
 .account-avatar-sm {
-    width: 30px;
-    height: 30px;
-    font-size: var(--fs-sm);
-    box-shadow: 0 0 0 2px var(--elevated), 0 0 0 3px var(--primary);
+    position: relative;
+    width: 34px;
+    height: 34px;
+    font-size: 0.9375rem;   /* 15px */
+    background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 80%, #ffffff), var(--primary));
+    transition: box-shadow var(--t-fast);
+}
+
+/* Green "signed in" dot on the avatar */
+.account-avatar-sm::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--r-full);
+    background: var(--toast-success);
+    box-shadow: 0 0 0 2px var(--elevated);
 }
 
 .account-menu {
