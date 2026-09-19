@@ -897,10 +897,11 @@ function helperRowInner() {
             href="${HELPER_DOWNLOAD}?v=${HELPER_VERSION}" download="NEOC-Alert-Helper.exe" aria-label="Download the alert helper"
             title="${outdated ? `Download v${HELPER_VERSION}. Running it replaces the old version`
                 : 'Download the Windows helper that shows alerts full-screen'}">${ic('download', 14)}</a>`;
-    const uninstall = running
-        ? `<button id="helper-uninstall" class="btn btn-sm btn-muted btn-icon helper-uninstall" type="button"
-            aria-label="Uninstall the alert helper" title="Uninstall the helper from this PC">${ic('trash', 14)}</button>`
-        : '';
+    // Always shown; the helper uninstalls itself, so it needs to be running on this PC
+    const uninstall = `<button id="helper-uninstall" class="btn btn-sm btn-muted btn-icon helper-uninstall" type="button"
+            ${running ? '' : 'disabled'} aria-label="Uninstall the alert helper"
+            title="${running ? 'Uninstall the helper from this PC'
+                : 'Nothing to uninstall: the helper isn’t running on this PC'}">${ic('trash', 14)}</button>`;
     return `
         <div class="info-row-label">Helper</div>
         <div class="info-row-body">

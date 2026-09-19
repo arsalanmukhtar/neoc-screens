@@ -1428,7 +1428,7 @@ code {
     gap: var(--sp-1-5);
 }
 
-.helper-uninstall:hover {
+.helper-uninstall:hover:not(:disabled) {
     background: var(--danger);
     color: #ffffff;
 }
