@@ -175,11 +175,11 @@ function getSelected() {
     return { cell, cfg: GRID_CONFIG[cfgIndex(state.selected.gridId)] };
 }
 
-// How a station's portal is served (short = the Network row badge)
+// How a station's portal is served
 const ACCESS_TYPES = {
-    vscode: { label: 'VS Code Live Server', short: 'Live Server' },
-    npm: { label: 'npm', short: 'npm' },
-    browser: { label: 'Browser', short: 'Browser' },
+    vscode: { label: 'VS Code Live Server' },
+    npm: { label: 'npm' },
+    browser: { label: 'Browser' },
 };
 
 function accessInfo(cell) {
@@ -856,9 +856,8 @@ function infoRow(label, value, meta, extraHTML = '') {
 
 function serverBadge(access) {
     if (!access) return '';
-    const full = `${access.label}${access.port ? ` · Port ${access.port}` : ''}`;
-    const text = `${access.short || access.label}${access.port ? ` · ${access.port}` : ''}`;
-    return `<span class="type-badge" data-type="${escHtml(access.type)}" title="${escHtml(full)}">${escHtml(text)}</span>`;
+    const text = `${access.label}${access.port ? ` · Port ${access.port}` : ''}`;
+    return `<span class="type-badge" data-type="${escHtml(access.type)}">${escHtml(text)}</span>`;
 }
 
 // Which station this PC receives alerts for (one station per PC)
@@ -970,6 +969,7 @@ function panelOverviewTab(cell) {
         ${infoRow('Category', cell.category)}
         ${infoRow('Operator', cell.user, cell.mail || 'No email on file')}
         ${networkRow(cell)}
+        ${serverRow(cell)}
         ${passwordRow(cell)}
         ${pushRow(cell)}
         ${helperRow(cell)}
@@ -1005,8 +1005,19 @@ function networkRow(cell) {
         <div class="info-row-label">Network</div>
         <div class="info-row-body">
             <div class="info-row-value" title="${escHtml(cell.ipAddress)}">${escHtml(cell.ipAddress || '—')}</div>
-            ${isAdmin() ? rowIconButton('edit-ip', 'pencil', 'Edit IP address') : ''}
-            ${serverBadge(accessInfo(cell))}
+            ${isAdmin() ? `<div class="row-actions">${rowIconButton('edit-ip', 'pencil', 'Edit IP address')}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+// How the portal is served, on its own row (every station)
+function serverRow(cell) {
+    const access = accessInfo(cell);
+    return `
+    <div class="info-row">
+        <div class="info-row-label">Server</div>
+        <div class="info-row-body">
+            ${access ? serverBadge(access) : '<div class="info-row-meta">Not configured</div>'}
         </div>
     </div>`;
 }

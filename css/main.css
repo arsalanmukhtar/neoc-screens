@@ -1446,12 +1446,6 @@ code {
     color: var(--ink);
 }
 
-.info-row-value + .row-icon {
-    margin-left: calc(-1 * var(--sp-1));
-    width: 24px;
-    height: 24px;
-}
-
 .row-input {
     flex: 1;
     min-width: 0;
@@ -1525,7 +1519,7 @@ code {
 
 /* Server badge on the Network row sits at the right edge */
 .info-row-body .type-badge {
-    margin-left: auto;
+    align-self: center;
 }
 
 .info-row-value {
