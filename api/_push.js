@@ -63,7 +63,11 @@ export async function syncCounts(ids) {
 
 // Alerts can only be sent Monday–Friday, 8:30 AM – 4:30 PM Pakistan time (UTC+5, no daylight saving)
 export const OFFICE_HOURS_TEXT = 'Mon–Fri, 8:30 AM – 4:30 PM';
+// TEMPORARILY OFF for testing: set to true to allow alerts only in office hours again
+// (also in js/app.js)
+export const OFFICE_HOURS_ON = false;
 export function inOfficeHours(now = new Date()) {
+    if (!OFFICE_HOURS_ON) return true;
     const pk = new Date(now.getTime() + 5 * 60 * 60 * 1000);
     const day = pk.getUTCDay();                                  // 0 Sunday … 6 Saturday
     const minutes = pk.getUTCHours() * 60 + pk.getUTCMinutes();
