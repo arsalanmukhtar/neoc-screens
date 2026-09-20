@@ -150,10 +150,10 @@ Until this is done, the Desktop and Mobile buttons stay greyed out.
 A browser can't draw over other programs, so each operator PC can run a small tray app that shows Desktop alerts **full-screen, on top of every window, on every monitor**, flashing red with a repeating warning sound until **Acknowledge** is clicked (Alt+F4 won't close it).
 
 1. On the operator's PC, open the station in the dashboard. Below **Alerts**, the **Helper** row shows **Download** → run `NEOC-Alert-Helper.exe` (Windows may warn about an unrecognised app: **More info → Run anyway**).
-2. It sits in the system tray and starts with Windows (right-click the tray icon to change that, show a test alert, or exit).
+2. It installs itself to `%LOCALAPPDATA%\NEOC Alert Helper` and runs from there, then says so. **The downloaded file can be deleted afterwards.** It sits in the system tray and starts whenever you sign in to Windows (right-click the tray icon to change that, show a test alert, uninstall, or exit).
 3. The **Helper** row then shows **Running · v1.1** with **Check again** (refresh), **Test**, **Download** and **Uninstall** buttons. After Download the row also checks by itself every few seconds, so no page reload is needed. The first time, Chrome/Edge may ask to let the site **access apps on this device**: choose **Allow**.
 
-**Updating.** If the row says **Old version**, click **Download** and run the new exe: it stops the older copy and takes over (v1.0 can't uninstall itself, so this is the way to replace it). **Uninstall** (also in the tray menu) stops the helper, removes it from Windows startup and deletes its exe. After changing the helper, bump `Version` in `helper/NeocAlertHelper.cs` and `HELPER_VERSION` in `js/app.js` together.
+**Updating.** If the row says **Old version**, click **Download** and run the new exe: it stops the running copy, replaces the installed one and takes over (v1.0 can't uninstall itself, so this is the way to replace it). **Uninstall** (also in the tray menu) stops the helper, removes it from Windows startup and deletes its exe. After changing the helper, bump `Version` in `helper/NeocAlertHelper.cs` and `HELPER_VERSION` in `js/app.js` together.
 
 The helper only listens on `127.0.0.1:47800`, accepts requests from the dashboard's own site, and never connects to the internet. The browser (or installed app) must be running to receive the alert and hand it over. Source: `helper/NeocAlertHelper.cs`; rebuild with `helper\build.cmd` (uses the C# compiler built into Windows) → `downloads/NEOC-Alert-Helper.exe`.
 
@@ -172,7 +172,9 @@ On a phone the same URL opens an app-style layout (`js/mobile.js`, `css/mobile.c
 
 Install: Android (Chrome) → menu → **Install app**. iPhone (Safari, iOS 16.4+) → **Share → Add to Home Screen**; on iPhone alerts only work in the installed app, and the phone vibrates only for the notification (iOS doesn't let web apps vibrate).
 
-The layout switches automatically on phones. `?mobile=1` shows it on a PC for testing, `?mobile=0` switches back (More → **Desktop layout** does the same on a phone).
+Phones always get this layout; a phone can't be switched to the desktop one. On a PC, `?mobile=1` shows the phone layout for testing and `?mobile=0` switches back.
+
+Searching in the station picker shows each match's operator name in a small bubble above the cell.
 
 ---
 
