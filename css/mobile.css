@@ -1302,7 +1302,7 @@ button.m-list-item:active {
     background: var(--toast-success);
 }
 
-/* Search results: a rounded bubble above the cell, its tail in a bottom corner */
+/* Search results: a rounded bubble above the cell, hanging from two round blobs */
 .m-picker-row.is-searching {
     row-gap: 72px;      /* room for the bubbles above each row */
     margin-top: 68px;
@@ -1311,13 +1311,13 @@ button.m-list-item:active {
 
 .m-pick-tip {
     position: absolute;
-    bottom: calc(100% + 6px);      /* a few pixels clear of the cell */
+    bottom: calc(100% + 13px);     /* the blobs sit in this gap, clear of the cell */
     left: 0;
     z-index: 3;
     width: max-content;
-    max-width: 100%;               /* never wider than its cell, so bubbles don't overlap */
-    padding: 5px var(--sp-2);
-    border-radius: 10px 10px 10px 3px;
+    max-width: 100%;
+    padding: 6px var(--sp-2-5);
+    border-radius: 12px;
     background: var(--ink);
     color: var(--background);
     font-size: 0.6875rem;          /* 11px */
@@ -1328,29 +1328,45 @@ button.m-list-item:active {
     box-shadow: var(--shadow-md);
 }
 
-/* Tail hanging from the bottom-left corner, pointing at the cell */
+/* Two blobs under the bottom-left corner, like a thought cloud. The big one
+   overlaps the bubble so there is no seam between them. */
+.m-pick-tip::before,
 .m-pick-tip::after {
     content: '';
     position: absolute;
-    top: 100%;
-    left: 1px;
-    border-style: solid;
-    border-width: 8px 9px 0 0;
-    border-color: var(--ink) transparent transparent transparent;
+    border-radius: 50%;
+    background: var(--ink);
 }
 
-/* Last column: bubble and tail flip to the right so they stay on screen */
+.m-pick-tip::before {
+    top: calc(100% - 5px);
+    left: 8px;
+    width: 12px;
+    height: 12px;
+}
+
+.m-pick-tip::after {
+    top: calc(100% + 4px);
+    left: 4px;
+    width: 6px;
+    height: 6px;
+}
+
+/* Last column: bubble and blobs flip to the right so they stay on screen */
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip {
     left: auto;
     right: 0;
-    border-radius: 12px 12px 3px 12px;
     text-align: right;
+}
+
+.m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::before {
+    left: auto;
+    right: 8px;
 }
 
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::after {
     left: auto;
-    right: 1px;
-    border-width: 8px 0 0 9px;
+    right: 4px;
 }
 
 .m-pick-bell {
