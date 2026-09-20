@@ -176,6 +176,8 @@ Phones always get this layout; a phone can't be switched to the desktop one. On 
 
 Searching in the station picker shows each match's operator name in a small bubble above the cell.
 
+**Acknowledgements.** Every alert gets an id when it is sent and is recorded per station (`alert:log:<station>`, newest 50). Acknowledging it — on the full-screen alarm or from **More → Alert history** — writes the time and the device to the server (`alert:ack`, one field per alert). The first acknowledgement is kept: it can't be changed, overwritten or cleared, so the record of who answered stands. `GET /api/alert-log?station=G-7` returns the record.
+
 ---
 
 ## Admin: sign in, IP addresses and system passwords

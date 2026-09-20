@@ -1776,7 +1776,29 @@ async function uninstallHelper() {
 // ─── Incoming alert: pulsing overlay in the middle of the screen ─────────────
 // Shown when a desktop alert arrives for this PC's station (from the service worker),
 // or when the app is opened from the alert's notification.
-const alertOverlay = { count: 0, titleTimer: null, baseTitle: document.title };
+const alertOverlay = { count: 0, titleTimer: null, baseTitle: document.title, current: null };
+
+// Who this device says it is, in the acknowledgement record
+const ackLabel = () => `${isMobileDevice() ? 'Phone' : 'PC'} · ${navigator.userAgentData?.platform || navigator.platform || 'Unknown'}`;
+
+// Records the acknowledgement on the server. The first one is kept for good.
+async function recordAck(alertId) {
+    if (!alertId) return null;
+    try {
+        const res = await fetch('api/alert-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alertId, by: ackLabel() }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        emit('ack', data);
+        return data;
+    } catch (err) {
+        console.warn('[Alert] ack', err);
+        return null;
+    }
+}
 
 function showAlertOverlay(alert) {
     const overlay = $('alert-overlay');
@@ -1785,6 +1807,7 @@ function showAlertOverlay(alert) {
     $('alert-station').textContent = [alert.stationId, alert.pc].filter(Boolean).join(' · ').toUpperCase();
     $('alert-time').textContent = `RECEIVED ${when.toLocaleTimeString('en-US', { hour12: false })}`
         + (alertOverlay.count > 1 ? ` · ${alertOverlay.count} ALERTS` : '');
+    alertOverlay.current = alert;
     overlay.hidden = false;
     $('alert-ack').focus();
     emit('alert-shown', alert);
@@ -1800,6 +1823,9 @@ function showAlertOverlay(alert) {
 
 async function acknowledgeAlert() {
     if ($('alert-overlay').hidden) return;
+    const shown = alertOverlay.current;
+    alertOverlay.current = null;
+    if (shown && shown.id) recordAck(shown.id);
     emit('alert-ack');
     $('alert-overlay').hidden = true;
     alertOverlay.count = 0;

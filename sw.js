@@ -3,7 +3,7 @@
 // Same-origin files are fetched network-first (so edits to data.js show up at once)
 // and fall back to the cached copy when offline. Other origins (fonts, EmailJS) pass through.
 
-const CACHE = 'neoc-cd-v13';
+const CACHE = 'neoc-cd-v14';
 
 // Alerts received on this device, newest first (read by the phone app's Recent alerts).
 // Kept in its own cache so app updates don't wipe it.
@@ -66,7 +66,7 @@ async function logAlert(alert) {
         const hit = await cache.match(LOG_KEY);
         const log = hit ? await hit.json() : [];
         if (log.some(item => item.stationId === alert.stationId && item.at === alert.at)) return;
-        log.unshift({ stationId: alert.stationId, pc: alert.pc, at: alert.at, ack: false });
+        log.unshift({ id: alert.id, stationId: alert.stationId, pc: alert.pc, at: alert.at, ack: false });
         await cache.put(LOG_KEY, new Response(JSON.stringify(log.slice(0, LOG_MAX)), {
             headers: { 'Content-Type': 'application/json' },
         }));
@@ -83,6 +83,7 @@ self.addEventListener('push', event => {
     }
     const alert = {
         type: 'neoc-alert',
+        id: data.id || '',
         title: data.title || 'NEOC alert',
         body: data.body || '',
         stationId: data.stationId || '',

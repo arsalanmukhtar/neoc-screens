@@ -1475,8 +1475,13 @@ button.m-list-item:active {
     justify-content: center;
 }
 
-.m-log-clear {
-    margin-top: var(--sp-4);
+.m-ack-btn {
+    flex: none;
+}
+
+/* Alert history rows: let the date and status wrap instead of being cut off */
+.m-log-icon + .m-list-text .m-list-sub {
+    white-space: normal;
 }
 
 /* ─── Incoming alert: full-screen flashing red (like the PC helper) ───── */

@@ -3,6 +3,7 @@
 // The message text is built here, so callers cannot push arbitrary content.
 
 import { redis, webpush, pushReady, isStationId, stationKey, parseRecord, clean, syncCounts, deviceKind, KINDS, inOfficeHours } from './_push.js';
+import { logKey } from './alert-log.js';
 
 const RATE_LIMIT = 10;   // alerts per station per minute
 
@@ -28,14 +29,18 @@ export default async function handler(req, res) {
 
         const pc = clean(body.pc, 20) || stationId;
         const portal = clean(body.portal, 60);
+        const at = new Date().toISOString();
+        // Identifies this alert everywhere: in the payload, the record below and its acknowledgement
+        const id = `${stationId}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 6)}`;
         const payload = JSON.stringify({
+            id,
             title: `NEOC ALERT · ${stationId}`,
             body: `RETURN TO YOUR WORKSTATION (${pc.toUpperCase()})`,
             tag: `neoc-alert-${stationId}`,
             stationId,
             pc,
             portal,
-            at: new Date().toISOString(),
+            at,
         });
 
         const key = stationKey(stationId);
@@ -63,7 +68,13 @@ export default async function handler(req, res) {
 
         const tally = type => outcomes.filter(o => o === type).length;
         if (tally('expired')) await syncCounts([stationId]);
+
+        // Keep the record (newest first, 50 per station) so acknowledgements can be tracked
+        await redis.lpush(logKey(stationId), JSON.stringify({ id, at, pc, portal, target, sent: tally('sent') }));
+        await redis.ltrim(logKey(stationId), 0, 49);
+
         return res.status(200).json({
+            id,
             target,
             total: outcomes.length,
             sent: tally('sent'),

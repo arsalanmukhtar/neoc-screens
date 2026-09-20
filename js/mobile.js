@@ -78,9 +78,61 @@ async function mWriteLog(log) {
     }
 }
 
+// Alerts recorded on the server for the station this phone listens to, with their acknowledgements
+let mServerAlerts = [];
+
+async function mLoadServerAlerts() {
+    const station = localPushStation();
+    if (!station) {
+        mServerAlerts = [];
+        return mServerAlerts;
+    }
+    try {
+        const res = await fetch(`api/alert-log?station=${encodeURIComponent(station)}`, { cache: 'no-store' });
+        mServerAlerts = res.ok ? (await res.json()).alerts || [] : [];
+    } catch (e) {
+        mServerAlerts = [];   // offline: the phone's own history still shows
+    }
+    return mServerAlerts;
+}
+
+// What the history shows: the server's record for this phone's station, plus anything
+// this phone received for another station (so nothing is lost when the station changes)
+function mHistory() {
+    const station = localPushStation();
+    const rows = mServerAlerts.map(alert => ({
+        id: alert.id,
+        stationId: station,
+        pc: alert.pc,
+        at: alert.at,
+        ack: alert.ack || null,
+    }));
+    const known = new Set(rows.map(r => r.id).filter(Boolean));
+    mAlertLog.forEach(item => {
+        if (item.id && known.has(item.id)) return;
+        rows.push({ id: item.id || '', stationId: item.stationId, pc: item.pc, at: item.at, ack: item.ack ? { at: item.at, by: 'This phone' } : null, local: true });
+    });
+    return rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
 // Re-read the history and redraw (after an alert, or when the app comes back to the front)
 function mReloadLog() {
-    return mReadLog().then(mRefresh);
+    return Promise.all([mReadLog(), mLoadServerAlerts()]).then(mRefresh);
+}
+
+// Acknowledge from the history: recorded once on the server, then it can't be changed
+async function mAcknowledge(el) {
+    const id = el.dataset.alert;
+    if (!id) return;
+    mBusy(el, true, '');
+    const data = await recordAck(id);
+    if (!data) {
+        showToast('error', 'Could not record it. Check the connection');
+        mBusy(el, false);
+        return;
+    }
+    showToast(data.already ? 'info' : 'success', data.already ? 'Already acknowledged' : 'Acknowledged');
+    await mReloadLog();
 }
 
 function mLoad(key, fallback) {
@@ -143,6 +195,7 @@ function mInit() {
 
     // Shared state changed in app.js → redraw what shows it
     ['auth', 'secrets', 'push', 'station', 'office'].forEach(name => window.addEventListener(`neoc:${name}`, mRefresh));
+    window.addEventListener('neoc:ack', () => mReloadLog());
     window.addEventListener('neoc:alert-shown', e => mAlarmStart(e.detail));
     window.addEventListener('neoc:alert-ack', mAlarmStop);
     window.addEventListener('beforeinstallprompt', () => setTimeout(mRefresh));
@@ -244,7 +297,7 @@ function mHome() {
     const cells = allVisibleCells();
     const configured = cells.filter(isConfigured).length;
     const ready = cells.filter(c => mDevices(displayNumber(c)) > 0).length;
-    const log = mAlertLog.slice(0, 3);
+    const log = mHistory().slice(0, 3);
 
     return `
     <section class="m-hero">
@@ -276,7 +329,7 @@ function mHome() {
         <h2 class="m-section-title">Recent alerts</h2>
         ${log.length ? '<button class="m-text-btn" type="button" data-m="alert-log">See all</button>' : ''}
     </div>
-    ${log.length ? `<div class="m-list">${log.map(mLogItem).join('')}</div>`
+    ${log.length ? `<div class="m-list">${log.map(entry => mLogItem(entry, true)).join('')}</div>`
         : `<div class="m-card m-muted-card">${ic('history', 16)}No alerts received on this phone yet</div>`}`;
 }
 
@@ -330,17 +383,25 @@ function mPhoneCard() {
     </section>`;
 }
 
-function mLogItem(entry) {
-    const hit = mStation(entry.stationId);
-    const when = new Date(entry.at);
+const shortTime = value => new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function mLogItem(entry, canAck = false) {
+    const ack = entry.ack;
+    const status = ack
+        ? `Acknowledged ${escHtml(shortTime(ack.at))}${ack.by ? ` · ${escHtml(ack.by)}` : ''}`
+        : 'Not acknowledged';
+    const action = !ack && canAck && entry.id
+        ? `<button class="m-btn m-btn-filled m-btn-sm m-ack-btn" type="button" data-m="ack" data-alert="${escHtml(entry.id)}">${ic('check', 14)}Acknowledge</button>`
+        : '';
     return `
-    <button class="m-list-item" type="button" ${hit ? `data-m="station" data-id="${escHtml(entry.stationId)}"` : ''}>
-        <span class="m-log-icon${entry.ack ? '' : ' is-new'}">${ic('bell-ring', 16)}</span>
+    <div class="m-list-item is-static">
+        <span class="m-log-icon${ack ? '' : ' is-new'}">${ic('bell-ring', 16)}</span>
         <span class="m-list-text">
-            <span class="m-list-title">${escHtml(entry.stationId)}${entry.pc ? ` · ${escHtml(entry.pc)}` : ''}</span>
-            <span class="m-list-sub">${when.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${entry.ack ? 'Acknowledged' : 'Not acknowledged'}</span>
+            <span class="m-list-title">${escHtml(entry.stationId || '')}${entry.pc ? ` · ${escHtml(entry.pc)}` : ''}</span>
+            <span class="m-list-sub">${escHtml(shortTime(entry.at))} · ${status}</span>
         </span>
-    </button>`;
+        ${action}
+    </div>`;
 }
 
 // ─── Stations ─────────────────────────────────────────────────────────────────
@@ -474,7 +535,7 @@ function mMore() {
         </div>
         <button class="m-list-item" type="button" data-m="alert-log">
             <span class="m-list-icon">${ic('history', 18)}</span>
-            <span class="m-list-text"><span class="m-list-title">Alert history</span><span class="m-list-sub">${plural(mAlertLog.length, 'alert')} on this phone</span></span>
+            <span class="m-list-text"><span class="m-list-title">Alert history</span><span class="m-list-sub">${(() => { const rows = mHistory(); const open = rows.filter(r => !r.ack).length; return open ? `${plural(open, 'alert')} to acknowledge` : plural(rows.length, 'alert'); })()}</span></span>
             <span class="m-list-trail">${ic('chevron-right', 18)}</span>
         </button>
     </div>
@@ -901,16 +962,18 @@ function openEditSheet(number, field) {
 }
 
 function openAlertLogSheet() {
+    mReloadLog();
     openSheet(() => {
-        const log = mAlertLog;
+        const log = mHistory();
+        const open = log.filter(r => !r.ack).length;
         return `
-        ${sheetHead('Alert history', 'Alerts received on this phone')}
+        ${sheetHead('Alert history', open ? `${plural(open, 'alert')} still to acknowledge` : 'Alerts for your station')}
         <div class="m-sheet-body">
-            ${log.length ? `<div class="m-list">${log.map(mLogItem).join('')}</div>
-                <button class="m-btn m-btn-outline m-btn-block m-log-clear" type="button" data-m="clear-log">${ic('trash', 16)}Clear history</button>`
-                : mEmpty('history', 'No alerts yet', 'Alerts that reach this phone are listed here.')}
+            ${log.length ? `<div class="m-list">${log.map(entry => mLogItem(entry, true)).join('')}</div>
+                <p class="m-help">Acknowledging is recorded on the server with the time and the device. It is kept for good and can't be changed.</p>`
+                : mEmpty('history', 'No alerts yet', 'Alerts sent to your station are listed here.')}
         </div>`;
-    });
+    }, {}, { full: true });
 }
 
 function openArchiveSheet() {
@@ -1030,9 +1093,7 @@ function mOnClick(e) {
         case 'edit': if (entry) openEditSheet(entry.data.number, el.dataset.field); break;
         case 'save-edit': mSaveEdit(entry); break;
         case 'alert-log': openAlertLogSheet(); break;
-        case 'clear-log':
-            mWriteLog([]).then(mRefresh);
-            break;
+        case 'ack': mAcknowledge(el); break;
         case 'archive': openArchiveSheet(); break;
         case 'install': openInstallSheet(); break;
         default: break;
