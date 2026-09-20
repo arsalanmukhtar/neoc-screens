@@ -823,9 +823,9 @@ function renderPanelContent() {
 // Desktop: push notification to the PC(s) registered for this station
 // Alerts can only be sent Monday–Friday, 8:30 AM – 4:30 PM Pakistan time (UTC+5, no daylight saving)
 const OFFICE_HOURS_TEXT = 'Mon–Fri, 8:30 AM – 4:30 PM';
-// TEMPORARILY OFF for testing: set to true to allow alerts only in office hours again
+// Set to false to allow alerts at any time (testing)
 // (also in api/_push.js)
-const OFFICE_HOURS_ON = false;
+const OFFICE_HOURS_ON = true;
 function inOfficeHours(now = new Date()) {
     if (!OFFICE_HOURS_ON) return true;
     const pk = new Date(now.getTime() + 5 * 60 * 60 * 1000);
@@ -1709,7 +1709,7 @@ function ensureNotifyPermission() {
 // downloads/NEOC-Alert-Helper.exe (source: helper/). It listens only on this PC (127.0.0.1).
 const HELPER_URL = 'http://127.0.0.1:47800';
 const HELPER_DOWNLOAD = 'downloads/NEOC-Alert-Helper.exe';
-const HELPER_VERSION = '1.1';   // keep in step with Program.Version in helper/NeocAlertHelper.cs
+const HELPER_VERSION = '1.2';   // keep in step with Program.Version in helper/NeocAlertHelper.cs
 let helperState = null;   // null = not checked yet, true = running, false = not found
 let helperVersion = '';
 let helperChecking = false;   // Refresh button spinning

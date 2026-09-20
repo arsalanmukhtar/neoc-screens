@@ -1302,6 +1302,57 @@ button.m-list-item:active {
     background: var(--toast-success);
 }
 
+/* Search results: a rounded bubble above the cell, its tail in a bottom corner */
+.m-picker-row.is-searching {
+    row-gap: 72px;      /* room for the bubbles above each row */
+    margin-top: 68px;
+    margin-bottom: var(--sp-2);
+}
+
+.m-pick-tip {
+    position: absolute;
+    bottom: calc(100% + 6px);      /* a few pixels clear of the cell */
+    left: 0;
+    z-index: 3;
+    width: max-content;
+    max-width: 100%;               /* never wider than its cell, so bubbles don't overlap */
+    padding: 5px var(--sp-2);
+    border-radius: 10px 10px 10px 3px;
+    background: var(--ink);
+    color: var(--background);
+    font-size: 0.6875rem;          /* 11px */
+    font-weight: var(--fw-semibold);
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    box-shadow: var(--shadow-md);
+}
+
+/* Tail hanging from the bottom-left corner, pointing at the cell */
+.m-pick-tip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 1px;
+    border-style: solid;
+    border-width: 8px 9px 0 0;
+    border-color: var(--ink) transparent transparent transparent;
+}
+
+/* Last column: bubble and tail flip to the right so they stay on screen */
+.m-picker-row > .m-pick:nth-child(4n) .m-pick-tip {
+    left: auto;
+    right: 0;
+    border-radius: 12px 12px 3px 12px;
+    text-align: right;
+}
+
+.m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::after {
+    left: auto;
+    right: 1px;
+    border-width: 8px 0 0 9px;
+}
+
 .m-pick-bell {
     position: absolute;
     top: -5px;

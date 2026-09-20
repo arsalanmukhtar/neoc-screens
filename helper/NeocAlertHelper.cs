@@ -24,20 +24,39 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("NEOC Alert Helper")]
 [assembly: AssemblyProduct("NEOC Tech (EW) Control Dashboard")]
 [assembly: AssemblyDescription("Shows NEOC desktop alerts full-screen, on top of all windows")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyFileVersion("1.2.0.0")]
 
 namespace NeocAlertHelper
 {
     static class Program
     {
         public const int Port = 47800;
-        public const string Version = "1.1";
+        public const string Version = "1.2";
         const string MutexName = "NEOC.AlertHelper.SingleInstance";
+
+        // The downloaded exe installs itself here, so the download can be deleted afterwards
+        public static string InstallPath
+        {
+            get
+            {
+                return Path.Combine(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NEOC Alert Helper"),
+                    "NEOC-Alert-Helper.exe");
+            }
+        }
+
+        static bool RunningInstalled()
+        {
+            return string.Equals(Application.ExecutablePath, InstallPath, StringComparison.OrdinalIgnoreCase);
+        }
 
         [STAThread]
         static void Main()
         {
+            // Started from the download (or anywhere else): install into the user's app folder and run from there
+            if (!RunningInstalled() && Install()) return;
+
             bool created;
             var mutex = new Mutex(true, MutexName, out created);
             if (!created)
@@ -60,8 +79,35 @@ namespace NeocAlertHelper
             }
         }
 
-        // Ends running copies of the helper that are older than this one. True if any were stopped.
-        static bool StopOlderCopies()
+        // Copies this exe into %LOCALAPPDATA%, starts that copy and returns true (this process then exits)
+        static bool Install()
+        {
+            string target = InstallPath;
+            try
+            {
+                StopOlderCopies(true);   // the installed copy may be running and holding the file
+                Directory.CreateDirectory(Path.GetDirectoryName(target));
+                File.Copy(Application.ExecutablePath, target, true);
+                Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+                MessageBox.Show(
+                    "NEOC Alert Helper is installed for your Windows account.\n\n"
+                    + "It starts automatically when you sign in, and it is running now (see the system tray).\n\n"
+                    + "You can delete the file you downloaded.",
+                    "NEOC Alert Helper", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "NEOC Alert Helper could not install itself to:\n" + target + "\n\n" + ex.Message
+                    + "\n\nIt will keep running from where it is instead. Don't delete or move that file.",
+                    "NEOC Alert Helper", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;   // carry on from the current location
+            }
+        }
+
+        // Ends running copies of the helper (older ones, or all of them when installing). True if any were stopped.
+        static bool StopOlderCopies(bool anyVersion = false)
         {
             var mine = new Version(Application.ProductVersion);
             int self = Process.GetCurrentProcess().Id;
@@ -73,7 +119,7 @@ namespace NeocAlertHelper
                     if (p.Id == self) continue;
                     var info = p.MainModule.FileVersionInfo;
                     if (info.FileDescription != "NEOC Alert Helper") continue;
-                    if (new Version(info.FileVersion) >= mine) continue;
+                    if (!anyVersion && new Version(info.FileVersion) >= mine) continue;
                     p.Kill();
                     p.WaitForExit(5000);
                     stopped = true;

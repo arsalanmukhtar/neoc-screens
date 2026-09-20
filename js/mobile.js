@@ -500,11 +500,6 @@ function mMore() {
             <span class="m-list-text"><span class="m-list-title">Archive</span><span class="m-list-sub">${archived ? plural(archived, 'retired station') : 'No retired stations'}</span></span>
             <span class="m-list-trail">${ic('chevron-right', 18)}</span>
         </button>
-        <button class="m-list-item" type="button" data-m="desktop-layout">
-            <span class="m-list-icon">${ic('laptop', 18)}</span>
-            <span class="m-list-text"><span class="m-list-title">Desktop layout</span><span class="m-list-sub">Screen wall view (for tablets)</span></span>
-            <span class="m-list-trail">${ic('chevron-right', 18)}</span>
-        </button>
     </div>
     <p class="m-footnote">NEOC Tech (EW) Control Dashboard</p>`;
 }
@@ -794,17 +789,18 @@ function mPickerGrid(entry) {
     if (!groups.length) return mEmpty('search', 'No stations found', '');
     return groups.map(({ cfg, cells }) => `
         <div class="m-group-head" data-color="${cfg.colorKey}"><span class="dot"></span>${escHtml(cfg.label)}</div>
-        <div class="m-picker-row" data-color="${cfg.colorKey}">
+        <div class="m-picker-row${q ? ' is-searching' : ''}" data-color="${cfg.colorKey}">
             ${cells.map(cell => {
                 const id = displayNumber(cell);
                 const n = mDevices(id);
                 const isMine = entry.data.mode === 'register' && mine === id;
                 return `
-                <button class="m-pick${isMine ? ' is-mine' : ''}" type="button" data-m="pick" data-id="${escHtml(id)}">
+                <button class="m-pick${isMine ? ' is-mine' : ''}${q ? ' has-tip' : ''}" type="button" data-m="pick" data-id="${escHtml(id)}">
                     <span class="m-pick-num">${escHtml(id)}</span>
                     <span class="m-pick-pc">${escHtml(cell.pcNumber)}</span>
                     ${entry.data.mode === 'alert' && n ? '<span class="m-pick-dot" title="Has registered devices"></span>' : ''}
                     ${isMine ? `<span class="m-pick-bell">${BELL_SOLID}</span>` : ''}
+                    ${q ? `<span class="m-pick-tip">${escHtml(cell.user || 'No operator')}</span>` : ''}
                 </button>`;
             }).join('')}
         </div>`).join('');
@@ -1039,10 +1035,6 @@ function mOnClick(e) {
             break;
         case 'archive': openArchiveSheet(); break;
         case 'install': openInstallSheet(); break;
-        case 'desktop-layout':
-            try { localStorage.setItem('ndma_layout', 'desktop'); } catch (err) { /* storage unavailable */ }
-            location.reload();
-            break;
         default: break;
     }
 }

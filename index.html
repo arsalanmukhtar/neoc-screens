@@ -28,17 +28,18 @@
             }
             document.documentElement.setAttribute('data-theme', t);
 
-            // Phones get the app layout (js/mobile.js). ?mobile=1 / ?mobile=0 force it on / off.
-            var pref = null, q = null;
-            try {
-                q = new URLSearchParams(location.search).get('mobile');
-                if (q === '1') localStorage.setItem('ndma_layout', 'mobile');
-                if (q === '0') localStorage.setItem('ndma_layout', 'desktop');
-                pref = localStorage.getItem('ndma_layout');
-            } catch (e) { }
+            // Phones always get the app layout (js/mobile.js); on a PC, ?mobile=1 shows it and ?mobile=0 hides it
             var phone = /iPhone|iPod|Android.+Mobile|Mobile.+Firefox/i.test(navigator.userAgent)
                 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600);
-            if (pref === 'mobile' || (phone && pref !== 'desktop')) document.documentElement.classList.add('m-app');
+            var pref = null;
+            try {
+                var q = new URLSearchParams(location.search).get('mobile');
+                if (q === '1') localStorage.setItem('ndma_layout', 'mobile');
+                if (q === '0') localStorage.setItem('ndma_layout', 'desktop');
+                if (phone) localStorage.removeItem('ndma_layout');   // no desktop layout on phones
+                else pref = localStorage.getItem('ndma_layout');
+            } catch (e) { }
+            if (phone || pref === 'mobile') document.documentElement.classList.add('m-app');
         })();
     </script>
 
