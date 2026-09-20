@@ -825,7 +825,7 @@ function renderPanelContent() {
 const OFFICE_HOURS_TEXT = 'Mon–Fri, 8:30 AM – 4:30 PM';
 // Set to false to allow alerts at any time (testing)
 // (also in api/_push.js)
-const OFFICE_HOURS_ON = true;
+const OFFICE_HOURS_ON = false;
 function inOfficeHours(now = new Date()) {
     if (!OFFICE_HOURS_ON) return true;
     const pk = new Date(now.getTime() + 5 * 60 * 60 * 1000);

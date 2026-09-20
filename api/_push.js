@@ -63,9 +63,11 @@ export async function syncCounts(ids) {
 
 // Alerts can only be sent Monday–Friday, 8:30 AM – 4:30 PM Pakistan time (UTC+5, no daylight saving)
 export const OFFICE_HOURS_TEXT = 'Mon–Fri, 8:30 AM – 4:30 PM';
-// Office hours can be switched off with the env var OFFICE_HOURS_OFF=1, no code change needed
-// (the buttons follow OFFICE_HOURS_ON in js/app.js)
-export const OFFICE_HOURS_ON = process.env.OFFICE_HOURS_OFF !== '1';
+// Set OFFICE_HOURS_LIMIT to true to bring the limit back (the buttons follow
+// OFFICE_HOURS_ON in js/app.js — switch both together). The env var OFFICE_HOURS_OFF=1
+// switches it off without a code change.
+const OFFICE_HOURS_LIMIT = false;   // false while manual testing is going on
+export const OFFICE_HOURS_ON = OFFICE_HOURS_LIMIT && process.env.OFFICE_HOURS_OFF !== '1';
 export function inOfficeHours(now = new Date()) {
     if (!OFFICE_HOURS_ON) return true;
     const pk = new Date(now.getTime() + 5 * 60 * 60 * 1000);
