@@ -1335,7 +1335,7 @@ button.m-list-item:active {
     position: absolute;
     z-index: -1;                   /* under the bubble's text, never over it */
     top: calc(100% - 11px);        /* most of it stays behind the box */
-    left: 6px;
+    left: max(6px, calc(25% - 7px));   /* midway between the corner and the middle */
     width: 14px;
     height: 14px;
     border-radius: 4px;
@@ -1352,7 +1352,7 @@ button.m-list-item:active {
 
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::before {
     left: auto;
-    right: 6px;
+    right: max(6px, calc(25% - 7px));
 }
 
 .m-pick-bell {
