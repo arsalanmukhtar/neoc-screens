@@ -65,6 +65,7 @@ const ICONS = {
     'alert-triangle': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01"/>',
     'alert-circle': '<circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>',
     'check-circle': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
     'mail': '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
     'radio': '<path d="M16.247 7.761a6 6 0 0 1 0 8.478m2.828-11.306a10 10 0 0 1 0 14.134m-14.15 0a10 10 0 0 1 0-14.134m2.828 11.306a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/>',
     'clock': '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
@@ -1782,13 +1783,13 @@ const alertOverlay = { count: 0, titleTimer: null, baseTitle: document.title, cu
 const ackLabel = () => `${isMobileDevice() ? 'Phone' : 'PC'} · ${navigator.userAgentData?.platform || navigator.platform || 'Unknown'}`;
 
 // Records the acknowledgement on the server. The first one is kept for good.
-async function recordAck(alertId) {
+async function recordAck(alertId, note = '') {
     if (!alertId) return null;
     try {
         const res = await fetch('api/alert-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ alertId, by: ackLabel() }),
+            body: JSON.stringify({ alertId, by: ackLabel(), note }),
         });
         if (!res.ok) return null;
         const data = await res.json();

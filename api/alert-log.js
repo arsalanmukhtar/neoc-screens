@@ -1,7 +1,7 @@
 // Alert record: what was sent, and who acknowledged it.
 //
 // GET  /api/alert-log?station=G-7&limit=30 → { alerts: [ { id, at, pc, target, ack } ] }
-// POST /api/alert-log { alertId, by }      → records the acknowledgement
+// POST /api/alert-log { alertId, by, note } → records the acknowledgement (note optional)
 //
 // An acknowledgement is written once and never changed: the first one wins, so the record
 // of who answered an alert, and when, can be trusted. Alerts are kept per station
@@ -12,6 +12,13 @@ import { redis, pushReady, isStationId, clean } from './_push.js';
 const LOG_MAX = 50;
 export const logKey = id => `alert:log:${id}`;
 export const ACK_KEY = 'alert:ack';
+
+// The comment is free text, so only control characters go; the app escapes it when it is shown
+const cleanNote = value => String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 
 const parse = value => {
     if (!value) return null;
@@ -44,7 +51,9 @@ export default async function handler(req, res) {
             if (typeof alertId !== 'string' || !/^[A-Za-z0-9|.-]{6,80}$/.test(alertId)) {
                 return res.status(400).json({ error: 'Unknown alert' });
             }
+            const note = cleanNote((req.body || {}).note);
             const ack = { at: new Date().toISOString(), by: clean((req.body || {}).by, 60) || 'Unknown device' };
+            if (note) ack.note = note;
             const first = await redis.hsetnx(ACK_KEY, alertId, JSON.stringify(ack));
             const stored = first ? ack : parse(await redis.hget(ACK_KEY, alertId)) || ack;
             return res.status(200).json({ ok: true, alertId, ack: stored, already: !first });

@@ -1477,8 +1477,70 @@ button.m-list-item:active {
     justify-content: center;
 }
 
-.m-ack-btn {
+/* Acknowledge (green) and acknowledge with a comment (amber), stacked beside the row */
+.m-log-actions {
     flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1-5);
+}
+
+.m-ack-btn {
+    width: 38px;
+    height: 38px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: transform var(--t-fast), filter var(--t-fast);
+}
+
+.m-ack-btn:active {
+    transform: scale(0.94);
+    filter: brightness(0.94);
+}
+
+.m-ack-btn.is-yes {
+    background: var(--success);
+    color: #ffffff;
+}
+
+.m-ack-btn.is-note {
+    background: var(--warn-soft);
+    color: var(--warn-text);
+}
+
+/* The comment left with an acknowledgement */
+.m-log-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-1-5);
+    margin-top: 2px;
+    color: var(--ink-soft);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    white-space: normal;
+}
+
+.m-log-note svg {
+    flex: none;
+    margin-top: 2px;
+}
+
+/* Multi-line input (the acknowledgement comment) */
+.m-textarea {
+    height: auto;
+    min-height: 96px;
+    padding: var(--sp-3) var(--sp-4);
+    line-height: 1.45;
+    resize: none;
+}
+
+/* Icons used inside help text */
+.m-help svg {
+    vertical-align: -2px;
+    margin: 0 1px;
 }
 
 /* Alert history rows: let the date and status wrap instead of being cut off */

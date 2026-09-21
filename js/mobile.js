@@ -121,18 +121,19 @@ function mReloadLog() {
 }
 
 // Acknowledge from the history: recorded once on the server, then it can't be changed
-async function mAcknowledge(el) {
+async function mAcknowledge(el, note = '') {
     const id = el.dataset.alert;
     if (!id) return;
     mBusy(el, true, '');
-    const data = await recordAck(id);
+    const data = await recordAck(id, note);
     if (!data) {
         showToast('error', 'Could not record it. Check the connection');
         mBusy(el, false);
-        return;
+        return false;
     }
     showToast(data.already ? 'info' : 'success', data.already ? 'Already acknowledged' : 'Acknowledged');
     await mReloadLog();
+    return true;
 }
 
 function mLoad(key, fallback) {
@@ -390,8 +391,14 @@ function mLogItem(entry, canAck = false) {
     const status = ack
         ? `Acknowledged ${escHtml(shortTime(ack.at))}${ack.by ? ` · ${escHtml(ack.by)}` : ''}`
         : 'Not acknowledged';
-    const action = !ack && canAck && entry.id
-        ? `<button class="m-btn m-btn-filled m-btn-sm m-ack-btn" type="button" data-m="ack" data-alert="${escHtml(entry.id)}">${ic('check', 14)}Acknowledge</button>`
+    // Plain acknowledgement, or one with a comment for anyone who is away and can't act on it
+    const actions = !ack && canAck && entry.id
+        ? `<span class="m-log-actions">
+            <button class="m-ack-btn is-yes" type="button" data-m="ack" data-alert="${escHtml(entry.id)}"
+                aria-label="Acknowledge" title="Acknowledge">${ic('check', 16)}</button>
+            <button class="m-ack-btn is-note" type="button" data-m="ack-note" data-alert="${escHtml(entry.id)}"
+                aria-label="Acknowledge with a comment" title="Acknowledge with a comment">${ic('message-square', 16)}</button>
+        </span>`
         : '';
     return `
     <div class="m-list-item is-static">
@@ -399,8 +406,9 @@ function mLogItem(entry, canAck = false) {
         <span class="m-list-text">
             <span class="m-list-title">${escHtml(entry.stationId || '')}${entry.pc ? ` · ${escHtml(entry.pc)}` : ''}</span>
             <span class="m-list-sub">${escHtml(shortTime(entry.at))} · ${status}</span>
+            ${ack && ack.note ? `<span class="m-log-note">${ic('message-square', 13)}${escHtml(ack.note)}</span>` : ''}
         </span>
-        ${action}
+        ${actions}
     </div>`;
 }
 
@@ -970,10 +978,44 @@ function openAlertLogSheet() {
         ${sheetHead('Alert history', open ? `${plural(open, 'alert')} still to acknowledge` : 'Alerts for your station')}
         <div class="m-sheet-body">
             ${log.length ? `<div class="m-list">${log.map(entry => mLogItem(entry, true)).join('')}</div>
-                <p class="m-help">Acknowledging is recorded on the server with the time and the device. It is kept for good and can't be changed.</p>`
+                <p class="m-help">${ic('check', 13)} acknowledges the alert. ${ic('message-square', 13)} acknowledges it with a comment, for when you are away and can't attend to it. Either way the time, the device and the comment are recorded on the server, kept for good and can't be changed.</p>`
                 : mEmpty('history', 'No alerts yet', 'Alerts sent to your station are listed here.')}
         </div>`;
     }, {}, { full: true });
+}
+
+// Acknowledge and say why, for someone who is away and can't go to the workstation
+function openAckNoteSheet(alertId) {
+    if (!alertId) return;
+    openSheet(() => `
+        ${sheetHead('Acknowledge with a comment', 'Say why, if you are away from the workstation')}
+        <div class="m-sheet-body">
+            <label class="m-field">
+                <span class="m-field-label">Comment</span>
+                <textarea id="m-ack-note" class="m-input m-textarea" rows="3" maxlength="200"
+                    placeholder="Away from the office, on leave, travelling…"
+                    enterkeyhint="done"></textarea>
+            </label>
+            <p class="m-help">The alert is marked as acknowledged, with your comment, the time and this device. It is kept for good and can't be changed.</p>
+        </div>
+        <div class="m-sheet-foot">
+            <button id="m-ack-save" class="m-btn m-btn-filled m-btn-block m-btn-lg" type="button" data-m="save-ack-note" data-alert="${escHtml(alertId)}">${ic('check', 18)}Acknowledge</button>
+        </div>`, { alertId });
+    setTimeout(() => $('m-ack-note')?.focus(), 350);
+}
+
+async function mSaveAckNote(el) {
+    const note = ($('m-ack-note')?.value || '').trim();
+    if (!note) {
+        showToast('warn', 'Write a short comment first');
+        $('m-ack-note')?.focus();
+        return;
+    }
+    const btn = $('m-ack-save');
+    if (btn) mBusy(btn, true, 'Recording');
+    const done = await mAcknowledge(el, note);
+    if (done) closeSheet();
+    else if (btn) mBusy(btn, false);
 }
 
 function openArchiveSheet() {
@@ -1094,6 +1136,8 @@ function mOnClick(e) {
         case 'save-edit': mSaveEdit(entry); break;
         case 'alert-log': openAlertLogSheet(); break;
         case 'ack': mAcknowledge(el); break;
+        case 'ack-note': openAckNoteSheet(el.dataset.alert); break;
+        case 'save-ack-note': mSaveAckNote(el); break;
         case 'archive': openArchiveSheet(); break;
         case 'install': openInstallSheet(); break;
         default: break;

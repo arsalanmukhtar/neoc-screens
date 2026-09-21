@@ -104,4 +104,4 @@ export function parseRecord(value) {
 }
 
 // Short, plain text only
-export const clean = (value, max) => String(value || '').replace(/[^\p{L}\p{N}\s&().,'\/-]/gu, '').trim().slice(0, max);
+export const clean = (value, max) => String(value || '').replace(/[^\p{L}\p{N}\s&().,'·\/-]/gu, '').trim().slice(0, max);
