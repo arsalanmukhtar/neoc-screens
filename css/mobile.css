@@ -1302,7 +1302,7 @@ button.m-list-item:active {
     background: var(--toast-success);
 }
 
-/* Search results: a rounded bubble above the cell, hanging from two round blobs */
+/* Search results: a rounded bubble above the cell, hanging from a round blob */
 .m-picker-row.is-searching {
     row-gap: 72px;      /* room for the bubbles above each row */
     margin-top: 68px;
@@ -1311,7 +1311,7 @@ button.m-list-item:active {
 
 .m-pick-tip {
     position: absolute;
-    bottom: calc(100% + 13px);     /* the blobs sit in this gap, clear of the cell */
+    bottom: calc(100% + 10px);     /* the blob sits in this gap, clear of the cell */
     left: 0;
     z-index: 3;
     width: max-content;
@@ -1328,31 +1328,19 @@ button.m-list-item:active {
     box-shadow: var(--shadow-md);
 }
 
-/* Two blobs under the bottom-left corner, like a thought cloud. The big one
-   overlaps the bubble so there is no seam between them. */
-.m-pick-tip::before,
-.m-pick-tip::after {
+/* One blob at the bottom corner, half of it behind the bubble so the two merge */
+.m-pick-tip::before {
     content: '';
     position: absolute;
+    top: calc(100% - 6px);         /* half covered by the box above it */
+    left: 4px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--ink);
 }
 
-.m-pick-tip::before {
-    top: calc(100% - 5px);
-    left: 8px;
-    width: 12px;
-    height: 12px;
-}
-
-.m-pick-tip::after {
-    top: calc(100% + 4px);
-    left: 4px;
-    width: 6px;
-    height: 6px;
-}
-
-/* Last column: bubble and blobs flip to the right so they stay on screen */
+/* Last column: bubble and blob flip to the right so they stay on screen */
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip {
     left: auto;
     right: 0;
@@ -1360,11 +1348,6 @@ button.m-list-item:active {
 }
 
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::before {
-    left: auto;
-    right: 8px;
-}
-
-.m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::after {
     left: auto;
     right: 4px;
 }
