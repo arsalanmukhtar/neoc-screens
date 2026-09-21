@@ -1302,7 +1302,7 @@ button.m-list-item:active {
     background: var(--toast-success);
 }
 
-/* Search results: a rounded bubble above the cell, hanging from a round blob */
+/* Search results: a rounded bubble above the cell, with a rounded tail below it */
 .m-picker-row.is-searching {
     row-gap: 72px;      /* room for the bubbles above each row */
     margin-top: 68px;
@@ -1311,7 +1311,7 @@ button.m-list-item:active {
 
 .m-pick-tip {
     position: absolute;
-    bottom: calc(100% + 10px);     /* the blob sits in this gap, clear of the cell */
+    bottom: calc(100% + 10px);     /* the tail sits in this gap, clear of the cell */
     left: 0;
     z-index: 3;
     width: max-content;
@@ -1328,19 +1328,22 @@ button.m-list-item:active {
     box-shadow: var(--shadow-md);
 }
 
-/* One blob at the bottom corner, half of it behind the bubble so the two merge */
+/* A rounded square turned 45 degrees: only its bottom corner shows under the
+   bubble, so the tail reads as a small play-button triangle pointing down */
 .m-pick-tip::before {
     content: '';
     position: absolute;
-    top: calc(100% - 6px);         /* half covered by the box above it */
-    left: 4px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
+    z-index: -1;                   /* under the bubble's text, never over it */
+    top: calc(100% - 11px);        /* most of it stays behind the box */
+    left: 6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
     background: var(--ink);
+    transform: rotate(45deg);
 }
 
-/* Last column: bubble and blob flip to the right so they stay on screen */
+/* Last column: bubble and tail flip to the right so they stay on screen */
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip {
     left: auto;
     right: 0;
@@ -1349,7 +1352,7 @@ button.m-list-item:active {
 
 .m-picker-row > .m-pick:nth-child(4n) .m-pick-tip::before {
     left: auto;
-    right: 4px;
+    right: 6px;
 }
 
 .m-pick-bell {
