@@ -814,13 +814,16 @@ function mAlertButtons(cell) {
     <div class="m-alert-actions${closed ? ' is-off-hours' : ''}">
         ${Object.keys(ALERT_KINDS).map(kind => {
             const n = deviceCount(id, kind);
-            const enabled = pushStatusValue ? pushStatusValue.enabled : true;
-            const { label, icon, device } = ALERT_KINDS[kind];
+            const { label, icon, device, noDevices } = ALERT_KINDS[kind];
+            const enabled = noDevices || (pushStatusValue ? pushStatusValue.enabled : true);
+            const hint = noDevices
+                ? 'Sends a WhatsApp message'
+                : pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device} registered`) : 'Checking…';
             return `
-            <button class="m-btn m-btn-danger m-btn-xl${closed ? ' is-off-hours' : ''}" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}"
-                ${enabled ? '' : 'disabled'} ${closed ? 'aria-disabled="true"' : ''}>
-                ${ic(icon, 20)}<span class="m-btn-stack"><span>${label}</span>
-                <small>${closed ? 'Out of office hours' : pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device} registered`) : 'Checking…'}</small></span>
+            <button class="m-btn m-btn-danger m-alert-btn${closed ? ' is-off-hours' : ''}" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}"
+                ${enabled ? '' : 'disabled'} ${closed ? 'aria-disabled="true"' : ''}
+                aria-label="${escHtml(`${label} alert`)}" title="${escHtml(closed ? 'Out of office hours' : hint)}">
+                ${ic(icon, 26)}
             </button>`;
         }).join('')}
     </div>`;
@@ -889,7 +892,7 @@ function renderAlertConfirm(entry) {
             <div class="m-confirm-sub">${escHtml(cell.pcNumber)} · Subgrid ${escHtml(cfg.label)}</div>
             <div class="m-confirm-user">${ic('user', 16)}${escHtml(cell.user || 'No operator')}</div>
         </div>
-        <p class="m-help">“Desktop” rings the PCs and “Mobile” the phones that get ${escHtml(displayNumber(cell))}’s alerts, with a full-screen alarm.</p>
+        <p class="m-help">${ic('monitor', 13)} rings the PCs and ${ic('smartphone', 13)} the phones that get ${escHtml(displayNumber(cell))}’s alerts, with a full-screen alarm. ${ic('whatsapp', 13)} sends a WhatsApp message to the station’s number.</p>
     </div>
     <div class="m-sheet-foot">${mAlertButtons(cell)}</div>`;
 }

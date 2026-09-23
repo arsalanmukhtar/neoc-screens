@@ -377,8 +377,15 @@ html.m-app {
 /* Send alert: Desktop + Mobile, side by side */
 .m-alert-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--sp-2-5);
+}
+
+/* Icon-only alert buttons: PC, phone, WhatsApp */
+.m-alert-btn {
+    min-height: 64px;
+    border-radius: 18px;
+    padding: 0;
 }
 
 .m-foot-label {

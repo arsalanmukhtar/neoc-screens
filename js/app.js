@@ -65,6 +65,7 @@ const ICONS = {
     'alert-triangle': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01"/>',
     'alert-circle': '<circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>',
     'check-circle': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    'whatsapp': '<path d="M3.2 20.8 4.6 16A8.4 8.4 0 1 1 8 19.4Z"/><path d="M9.2 9.6c0 3 2.4 5.4 5.4 5.4.4 0 .8-.3.9-.7l.3-1-2-.9-.7.8a4.6 4.6 0 0 1-2.1-2.1l.8-.7-.9-2-1 .3c-.4.1-.7.5-.7.9Z"/>',
     'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
     'mail': '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
     'radio': '<path d="M16.247 7.761a6 6 0 0 1 0 8.478m2.828-11.306a10 10 0 0 1 0 14.134m-14.15 0a10 10 0 0 1 0-14.134m2.828 11.306a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/>',
@@ -816,7 +817,7 @@ function renderPanelContent() {
     <div class="panel-body${state.panelTab === 'description' ? ' is-desc' : ''}" role="tabpanel">${body}</div>
     <div class="panel-foot panel-foot-alerts">
         <div class="foot-label">Send alert${inOfficeHours() ? '' : `<span class="foot-closed">Office hours only · ${OFFICE_HOURS_TEXT}</span>`}</div>
-        <div class="foot-actions">${deviceAlertButton(cell, 'desktop')}${deviceAlertButton(cell, 'mobile')}</div>
+        <div class="foot-actions">${Object.keys(ALERT_KINDS).map(kind => deviceAlertButton(cell, kind)).join('')}</div>
     </div>`;
     updateAlertButtons(cell);
 }
@@ -841,6 +842,7 @@ let officeOpen = inOfficeHours();   // re-checked every second by tickClock
 const ALERT_KINDS = {
     desktop: { label: 'Desktop', icon: 'monitor', device: 'PC' },
     mobile: { label: 'Mobile', icon: 'smartphone', device: 'phone' },
+    whatsapp: { label: 'WhatsApp', icon: 'whatsapp', device: 'WhatsApp number', noDevices: true },
 };
 
 const deviceCount = (id, kind) =>
@@ -852,9 +854,10 @@ function deviceAlertButton(cell, kind) {
     const n = known ? deviceCount(id, kind) : null;
     const off = known && !known.enabled;
     const closed = !inOfficeHours();
-    return `<button id="panel-alert-${kind}" class="btn btn-danger btn-lg${closed ? ' is-off-hours' : ''}" type="button" data-station="${escHtml(id)}" data-kind="${kind}"
+    const label = closed ? `${OFF_HOURS_MSG} (${OFFICE_HOURS_TEXT})` : alertButtonTitle(id, kind, known, n);
+    return `<button id="panel-alert-${kind}" class="btn btn-danger btn-lg btn-alert-icon${closed ? ' is-off-hours' : ''}" type="button" data-station="${escHtml(id)}" data-kind="${kind}"
         ${off ? 'disabled' : ''} ${closed ? 'aria-disabled="true"' : ''}
-        title="${escHtml(closed ? `${OFF_HOURS_MSG} (${OFFICE_HOURS_TEXT})` : alertButtonTitle(id, kind, known, n))}">${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}</button>`;
+        aria-label="${escHtml(`${ALERT_KINDS[kind].label} alert`)}" title="${escHtml(label)}">${ic(ALERT_KINDS[kind].icon, 18)}</button>`;
 }
 
 // One labelled row: label on the left, value (+ optional meta text / extra HTML) on the right
@@ -1390,14 +1393,17 @@ function kv(key, valueHTML) {
 // ─── Send alert: Desktop (push) and Mail (email) are separate buttons ────────
 function setAlertBusy(btn, busy, idleHTML) {
     if (!btn) return;
+    const compact = btn.classList.contains('btn-alert-icon');
     btn.disabled = busy;
     btn.setAttribute('aria-busy', String(busy));
-    btn.innerHTML = busy ? '<span class="spinner" aria-hidden="true"></span>Sending' : idleHTML;
+    btn.innerHTML = busy
+        ? `<span class="spinner" aria-hidden="true"></span>${compact ? '' : 'Sending'}`
+        : idleHTML;
 }
 
-// kind: 'desktop' rings the station's PCs, 'mobile' its phones
+// kind: 'desktop' rings the station's PCs, 'mobile' its phones, 'whatsapp' its WhatsApp number
 async function sendDeviceAlert(cell, kind, btn = $(`panel-alert-${kind}`),
-    idle = `${ic(ALERT_KINDS[kind].icon, 15)}${ALERT_KINDS[kind].label}`) {
+    idle = `${ic(ALERT_KINDS[kind].icon, 18)}`) {
     const id = displayNumber(cell);
     const { label, device } = ALERT_KINDS[kind];
     if (!inOfficeHours()) {
@@ -1487,6 +1493,7 @@ const pcLabel = () => `${navigator.userAgentData?.platform || navigator.platform
 
 // Send the alert to every PC registered for this station → { total, sent, failed, expired } or { error }
 async function pushAlert(cell, kind) {
+    if (kind === 'whatsapp') return whatsappAlert(cell);
     if (!window.isSecureContext) return { error: 'only available on the website or installed app' };
     const cfg = await getPushConfig();
     if (!cfg.enabled) return { error: 'not set up on the server' };
@@ -1508,6 +1515,26 @@ async function pushAlert(cell, kind) {
     }
 }
 
+// The server holds the numbers and talks to the WhatsApp bridge; the browser only names the station
+async function whatsappAlert(cell) {
+    try {
+        const res = await fetch('api/whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stationId: displayNumber(cell), pc: cell.pcNumber, portal: cell.portalName }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            console.warn('[WhatsApp] notify', res.status, body);
+            return { error: body.error || `server error ${res.status}` };
+        }
+        return body;
+    } catch (err) {
+        console.warn('[WhatsApp] notify', err);
+        return { error: 'no connection' };
+    }
+}
+
 // How many PCs each station has (api/push-status), cached for 30 s
 let pushStatusValue = null;
 let pushStatusCache = null;
@@ -1525,6 +1552,7 @@ function getPushStatus(force = false) {
 
 function alertButtonTitle(id, kind, status, n) {
     const { device } = ALERT_KINDS[kind];
+    if (kind === 'whatsapp') return `Send a WhatsApp alert for ${id}`;
     if (!status) return `Alert ${id}'s ${device}`;
     if (!status.enabled) return 'Alerts are not available here';
     if (!n) return kind === 'desktop'
@@ -1541,7 +1569,7 @@ async function updateAlertButtons(cell) {
         const btn = $(`panel-alert-${kind}`);
         if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
         const n = deviceCount(id, kind);
-        btn.disabled = !status.enabled;
+        if (!ALERT_KINDS[kind].noDevices) btn.disabled = !status.enabled;
         if (!inOfficeHours()) return;
         btn.title = alertButtonTitle(id, kind, status, n);
     });
@@ -2055,7 +2083,7 @@ function attachListeners() {
             clearSelection();
             return;
         }
-        const alertBtn = e.target.closest('#panel-alert-desktop, #panel-alert-mobile');
+        const alertBtn = e.target.closest('#panel-alert-desktop, #panel-alert-mobile, #panel-alert-whatsapp');
         if (alertBtn && alertBtn.classList.contains('is-off-hours')) {
             showToast('warn', OFF_HOURS_MSG);
             return;

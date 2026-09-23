@@ -1306,6 +1306,13 @@ code {
     text-transform: uppercase;
 }
 
+/* Icon-only alert buttons: PC, phone, WhatsApp */
+.btn-alert-icon {
+    flex: 1;
+    padding: 0;
+    gap: 0;
+}
+
 .foot-actions {
     display: flex;
     gap: var(--sp-2);
