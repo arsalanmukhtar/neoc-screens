@@ -845,6 +845,11 @@ const ALERT_KINDS = {
     whatsapp: { label: 'WhatsApp', icon: 'whatsapp', device: 'WhatsApp number', noDevices: true, appOnly: true },
 };
 
+// WhatsApp alerts are switched off for now: the button is greyed out and a click says so.
+// The whole path (api/whatsapp → the bridge on the VM) stays in place; set this to true to use it.
+const WHATSAPP_ON = false;
+const WHATSAPP_OFF_MSG = 'WhatsApp alerts are switched off for now';
+
 // The phone app layout (html.m-app). WhatsApp alerts are sent from there only.
 const isAppLayout = () => document.documentElement.classList.contains('m-app');
 const alertKinds = () => Object.keys(ALERT_KINDS).filter(kind => !ALERT_KINDS[kind].appOnly || isAppLayout());
@@ -1498,6 +1503,7 @@ const pcLabel = () => `${navigator.userAgentData?.platform || navigator.platform
 // Send the alert to every PC registered for this station → { total, sent, failed, expired } or { error }
 async function pushAlert(cell, kind) {
     if (kind === 'whatsapp') {
+        if (!WHATSAPP_ON) return { error: WHATSAPP_OFF_MSG };
         if (!isAppLayout()) return { error: 'WhatsApp alerts are sent from the phone app' };
         return whatsappAlert(cell);
     }

@@ -815,13 +815,16 @@ function mAlertButtons(cell) {
         ${alertKinds().map(kind => {
             const n = deviceCount(id, kind);
             const { label, icon, device, noDevices } = ALERT_KINDS[kind];
+            const switchedOff = kind === 'whatsapp' && !WHATSAPP_ON;
             const enabled = noDevices || (pushStatusValue ? pushStatusValue.enabled : true);
-            const hint = noDevices
-                ? 'Sends a WhatsApp message'
+            const hint = switchedOff
+                ? WHATSAPP_OFF_MSG
+                : noDevices ? 'Sends a WhatsApp message'
                 : pushStatusValue ? (n ? `${plural(n, device)} will ring` : `No ${device} registered`) : 'Checking…';
+            const grey = closed || switchedOff;
             return `
-            <button class="m-btn m-btn-danger m-alert-btn${closed ? ' is-off-hours' : ''}" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}"
-                ${enabled ? '' : 'disabled'} ${closed ? 'aria-disabled="true"' : ''}
+            <button class="m-btn m-btn-danger m-alert-btn${grey ? ' is-off-hours' : ''}" type="button" data-m="send-push" data-kind="${kind}" data-id="${escHtml(id)}"
+                ${enabled ? '' : 'disabled'} ${grey ? 'aria-disabled="true"' : ''}
                 aria-label="${escHtml(`${label} alert`)}" title="${escHtml(closed ? 'Out of office hours' : hint)}">
                 ${ic(icon, 26)}
             </button>`;
@@ -1213,6 +1216,10 @@ function mBusy(el, busy, label = '') {
 async function mSendPush(el) {
     const hit = mStation(el.dataset.id);
     if (!hit) return;
+    if (el.dataset.kind === 'whatsapp' && !WHATSAPP_ON) {
+        showToast('warn', WHATSAPP_OFF_MSG);
+        return;
+    }
     if (!inOfficeHours()) {
         showToast('warn', OFF_HOURS_MSG);
         return;
