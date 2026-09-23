@@ -812,7 +812,7 @@ function mAlertButtons(cell) {
     return `
     ${closed ? `<div class="m-off-hours">${ic('clock', 14)}Office hours only · ${OFFICE_HOURS_TEXT}</div>` : ''}
     <div class="m-alert-actions${closed ? ' is-off-hours' : ''}">
-        ${Object.keys(ALERT_KINDS).map(kind => {
+        ${alertKinds().map(kind => {
             const n = deviceCount(id, kind);
             const { label, icon, device, noDevices } = ALERT_KINDS[kind];
             const enabled = noDevices || (pushStatusValue ? pushStatusValue.enabled : true);

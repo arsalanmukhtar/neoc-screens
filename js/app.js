@@ -817,7 +817,7 @@ function renderPanelContent() {
     <div class="panel-body${state.panelTab === 'description' ? ' is-desc' : ''}" role="tabpanel">${body}</div>
     <div class="panel-foot panel-foot-alerts">
         <div class="foot-label">Send alert${inOfficeHours() ? '' : `<span class="foot-closed">Office hours only · ${OFFICE_HOURS_TEXT}</span>`}</div>
-        <div class="foot-actions">${Object.keys(ALERT_KINDS).map(kind => deviceAlertButton(cell, kind)).join('')}</div>
+        <div class="foot-actions">${alertKinds().map(kind => deviceAlertButton(cell, kind)).join('')}</div>
     </div>`;
     updateAlertButtons(cell);
 }
@@ -842,8 +842,12 @@ let officeOpen = inOfficeHours();   // re-checked every second by tickClock
 const ALERT_KINDS = {
     desktop: { label: 'Desktop', icon: 'monitor', device: 'PC' },
     mobile: { label: 'Mobile', icon: 'smartphone', device: 'phone' },
-    whatsapp: { label: 'WhatsApp', icon: 'whatsapp', device: 'WhatsApp number', noDevices: true },
+    whatsapp: { label: 'WhatsApp', icon: 'whatsapp', device: 'WhatsApp number', noDevices: true, appOnly: true },
 };
+
+// The phone app layout (html.m-app). WhatsApp alerts are sent from there only.
+const isAppLayout = () => document.documentElement.classList.contains('m-app');
+const alertKinds = () => Object.keys(ALERT_KINDS).filter(kind => !ALERT_KINDS[kind].appOnly || isAppLayout());
 
 const deviceCount = (id, kind) =>
     (pushStatusValue && pushStatusValue.kinds && pushStatusValue.kinds[id] && pushStatusValue.kinds[id][kind]) || 0;
@@ -1493,7 +1497,10 @@ const pcLabel = () => `${navigator.userAgentData?.platform || navigator.platform
 
 // Send the alert to every PC registered for this station → { total, sent, failed, expired } or { error }
 async function pushAlert(cell, kind) {
-    if (kind === 'whatsapp') return whatsappAlert(cell);
+    if (kind === 'whatsapp') {
+        if (!isAppLayout()) return { error: 'WhatsApp alerts are sent from the phone app' };
+        return whatsappAlert(cell);
+    }
     if (!window.isSecureContext) return { error: 'only available on the website or installed app' };
     const cfg = await getPushConfig();
     if (!cfg.enabled) return { error: 'not set up on the server' };
@@ -1565,7 +1572,7 @@ function alertButtonTitle(id, kind, status, n) {
 async function updateAlertButtons(cell) {
     const id = displayNumber(cell);
     const status = await getPushStatus();
-    Object.keys(ALERT_KINDS).forEach(kind => {
+    alertKinds().forEach(kind => {
         const btn = $(`panel-alert-${kind}`);
         if (!btn || btn.dataset.station !== id || btn.getAttribute('aria-busy') === 'true') return;
         const n = deviceCount(id, kind);

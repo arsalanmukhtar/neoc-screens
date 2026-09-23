@@ -132,6 +132,7 @@ The side panel has two alert buttons, so each alert goes out on one channel only
 - **Desktop** rings only the station's registered **PCs**: a Windows notification that stays until dismissed, and the full-screen alert from the **NEOC Alert Helper** (below). Where the helper isn't running, the dashboard shows its own pulsing alert instead.
 - **Mobile** rings only the station's registered **phones** (see Phone app): a notification, and the full-screen red alarm when the app is open.
 - Both buttons stay available; the hint / tooltip says how many PCs or phones will ring. Every device records whether it is a PC or a phone when it registers.
+- **WhatsApp** (phone app only): the third alert button sends a WhatsApp message to the station's number. The numbers live on the bridge VM (`whatsapp-bridge/`), never in this repo, and the alert ends with "Reply ACK to acknowledge" — a reply is recorded like any other acknowledgement. The desktop dashboard does not offer it.
 - **Office hours only**: alerts can be sent Monday–Friday, 8:30 AM – 4:30 PM Pakistan time. Outside those hours the buttons (and the phone's Alert button) are grey and a click says "No alerts possible out of office hours"; the server refuses them too (`inOfficeHours()` in `api/_push.js` and `js/app.js`).
 
 **Register a PC:** on the operator's PC, open the dashboard (or the installed app), select **their own** station, and click **Receive alerts here** in the side panel's **This PC** row. Allow notifications when asked. **Stop** removes it.
