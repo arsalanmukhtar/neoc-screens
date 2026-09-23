@@ -5,3 +5,8 @@ docs/
 
 # Local secrets (push alert keys)
 .env*.local
+
+# WhatsApp bridge: local secrets and session data never belong in this public repo
+whatsapp-bridge/.env
+whatsapp-bridge/numbers.json
+whatsapp-bridge/data/

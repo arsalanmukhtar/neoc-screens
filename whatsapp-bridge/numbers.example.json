@@ -1,0 +1,4 @@
+{
+  "_comment": "station id → WhatsApp number in full international form, digits only. Real numbers live only on the VM, never in this repo.",
+  "G-7": "923001234567"
+}

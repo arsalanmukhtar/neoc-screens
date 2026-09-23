@@ -1,0 +1,13 @@
+services:
+  neoc-wa:
+    build: .
+    container_name: neoc-wa
+    restart: unless-stopped
+    # Only nginx on this machine can reach it; nginx puts it behind HTTPS
+    ports:
+      - "127.0.0.1:47850:47850"
+    env_file: .env
+    volumes:
+      - ./data:/data                          # WhatsApp session, survives restarts
+      - ./numbers.json:/app/numbers.json:ro   # station → number, never leaves this machine
+    shm_size: "512m"                          # Chromium needs more than the 64 MB default
